@@ -1,0 +1,62 @@
+; ---------------------------------------------------------
+; VNKit demo script
+; Shows: backgrounds, characters, choices, variables,
+;        conditional branching, cross-script goto.
+; Enable "Use Placeholder Graphics" on the engine to run
+; this demo without any art assets.
+; ---------------------------------------------------------
+
+# Start
+
+@bg Campus time:0.8
+@bgm ThemeDay fade:1.5
+@set affection=0
+
+A warm spring afternoon. The school day is finally over.
+
+@char Ayame.Smile pos:center time:0.5
+Ayame: Hey, you actually came! [br]I wasn't sure you would.
+Ayame: The view from the rooftop is amazing at this hour.
+
+@char Ayame pos:left time:0.5
+@char Rin.Default pos:right time:0.5
+Rin: Oh. You brought someone along.
+@sfx Chime
+
+Ayame.Smile: This is the transfer student I told you about.
+
+@choice "Greet Rin warmly" goto:Warm do:affection+=1 | "Nod quietly" goto:Quiet
+
+# Warm
+Rin.Smile: ...Hi. Nice to meet you, I guess.
+Ayame: See? I told you she warms up fast.
+@goto Rooftop
+
+# Quiet
+Rin: Hm. The quiet type, huh.
+Ayame: Give them a chance, Rin.
+@goto Rooftop
+
+# Rooftop
+@bg Rooftop time:1.2
+@stopBgm fade:2
+
+The three of you watch the clouds drift by.
+
+Ayame: Days like this make everything feel possible.
+
+@if affection>0 goto:GoodEnd else:NormalEnd
+
+# GoodEnd
+@bgm ThemeSunset fade:1
+Rin.Smile: You're alright. Come back tomorrow, okay?
+@goto Finale
+
+# NormalEnd
+Rin: ...See you around, I suppose.
+@goto Finale
+
+# Finale
+@hideChars time:1.0
+And so the day quietly came to an end.[br][br]<i>Thanks for trying VNKit!</i>
+@goto Epilogue.Start

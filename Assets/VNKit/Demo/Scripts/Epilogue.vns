@@ -1,0 +1,8 @@
+; Tiny second script, used to demonstrate "@goto OtherScript.Label".
+
+# Start
+@bg Night time:1.5
+Somewhere beyond the hills, the story continues...
+@wait 1.0
+<b>THE END</b>
+@end

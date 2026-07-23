@@ -1,0 +1,9 @@
+# Start
+@bg Room
+@char Hana.Smile pos:center
+Hana: Hello, world![br]This is my first VNKit script.
+@choice "Say hi back" goto:Hi do:met=1 | "Walk away" goto:End
+# Hi
+Hana: Nice to meet you!
+# End
+@end
