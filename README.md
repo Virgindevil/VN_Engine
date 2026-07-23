@@ -2,11 +2,7 @@
 VNKit — lightweight visual novel engine for Unity 2022.3+
 ==========================================================
 
-
-
 QUICK START
-
-
 
 -----------
 
@@ -21,14 +17,12 @@ QUICK START
 3. Write scripts as .vns files (plain text). See Assets/VNKit/Demo/Scripts for examples and the full README for the command reference.` 
 
 RESOURCE FOLDERS (Tools > VNKit > Create Resource Folders)
-
-
-
 ----------------------------------------------------------
+```
 Assets/Resources/VN/Backgrounds/<Name>.png
 Assets/Resources/VN/Characters/<CharName>/<Appearance>.png
 Assets/Resources/VN/Audio/BGM|SFX|Voice/<Name>.(wav|mp3|ogg)
-
+```
 
 
 SCRIPT SYNTAX
