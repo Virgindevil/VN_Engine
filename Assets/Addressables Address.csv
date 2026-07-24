@@ -1,0 +1,17 @@
+ оманда в .vns;Addressables Address
+@bg Campus;VN/Backgrounds/Campus
+@bg Classroom;VN/Backgrounds/Classroom
+@bg none;Ч (фон убираетс€, адрес не нужен)
+@char Hana;VN/Characters/Hana/Default
+@char Hana.Happy;VN/Characters/Hana/Happy
+@char Ayame.Smile;VN/Characters/Ayame/Smile
+@char Hana pos:left;VN/Characters/Hana/Default
+@char Hana.Happy pos:right time:0.5;VN/Characters/Hana/Happy
+@hide Hana;Ч (только скрытие, адрес не нужен)
+@bgm Theme;VN/Audio/BGM/Theme
+@bgm Theme fade:1.5;VN/Audio/BGM/Theme
+@bgm none / @stopbgm;Ч
+@sfx Chime;VN/Audio/SFX/Chime
+@sfx Chime vol:0.8;VN/Audio/SFX/Chime
+@voice hana_01;VN/Audio/Voice/hana_01
+@stopvoice;Ч

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VNKit
 {
-    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, Ended }
+    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, Ended }
 
     [Serializable]
     public class VNSettings
@@ -32,10 +32,26 @@ namespace VNKit
     /// <summary>Tiny MonoBehaviour used purely as a coroutine host for non-Mono services.</summary>
     public class VNRunner : MonoBehaviour
     {
+        /// <summary>
+        /// Creates a coroutine host. When parent is a RectTransform (UI hierarchy),
+        /// the host is stretched to fill it so children that use fractional anchors
+        /// (DialogueUI, CharacterActor, BackgroundManager base layer) get a real size
+        /// instead of collapsing to a 0×0 point at the center.
+        /// </summary>
         public static VNRunner Create(string name, Transform parent)
         {
-            var go = new GameObject(name);
+            var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
+
+            if (parent is RectTransform)
+            {
+                var rt = (RectTransform)go.transform;
+                rt.anchorMin = Vector2.zero;
+                rt.anchorMax = Vector2.one;
+                rt.offsetMin = Vector2.zero;
+                rt.offsetMax = Vector2.zero;
+            }
+
             return go.AddComponent<VNRunner>();
         }
     }

@@ -32,12 +32,8 @@ namespace VNKit
             {
                 if (uiSprite != null) return uiSprite;
 
-                // Try classic built-in skin (Unity ≤ 2021 / some 2022 installs).
-                uiSprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
-                if (uiSprite != null) return uiSprite;
-
-                // Unity 2022.2+ / Unity 6 often no longer expose that path.
-                // Fall back to a simple white 9-slice sprite generated at runtime.
+                // Unity 2022.2+ / Unity 6 no longer ship UI/Skin/UISprite.psd.
+                // Always generate a simple white 9-slice at runtime (no Resources spam).
                 uiSprite = CreateFallbackUISprite();
                 return uiSprite;
             }
@@ -291,7 +287,7 @@ namespace VNKit
 
             var viewport = Rect("Viewport", rt);
             Stretch(viewport);
-            AddImage(viewport.gameObject, new Color(0f, 0f, 0f, 0.001f));
+            AddImage(viewport.gameObject, new Color(1f, 1f, 1f, 1f));
             var mask = viewport.gameObject.AddComponent<Mask>();
             mask.showMaskGraphic = false;
 

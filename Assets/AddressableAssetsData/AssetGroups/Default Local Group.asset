@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: 
+  m_GroupName: Default Local Group
+  m_Data:
+    m_SerializedData: []
+  m_GUID: 1d294c62c267a6a41821fe898f4f3048
+  m_SerializeEntries:
+  - m_GUID: 296b5042e04d5ae49862d38248d7f6da
+    m_Address: VN/Audio/SFX/Chime
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 368a230963090264b9f32bb76b8c0d00
+    m_Address: VN/Characters/Ayame/Smile
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3f3daba8786bfb54d923965b1a8eda07
+    m_Address: VN/Backgrounds/Classroom
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3f486b97c8f7d2e41a00a29668345884
+    m_Address: VN/Audio/BGM/ThemeSunset
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 56cb314c785adbe4e8b49701fc27198b
+    m_Address: VN/Characters/Rin/Default
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5e7b1f859b7dbb04791da2115e3b62a3
+    m_Address: VN/Characters/Rin/Smile
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 87e951bcf86d8184c84bc0214a39c4d7
+    m_Address: VN/Characters/Ayame/Default
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 91a71be2343f1164b9ae0875556e0b83
+    m_Address: VN/Backgrounds/Campus
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cb6599381bc632c48ba980c3fa183725
+    m_Address: VN/Audio/BGM/ThemeDay
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 4e62b8583a80e4645bac9511f271434b, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: bd0f50d9aa4651e4883a6aaa8a52127e, type: 2}
+    - {fileID: 11400000, guid: 83cae8913432fd4469dd795ebd37b98e, type: 2}

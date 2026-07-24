@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,6 +10,7 @@ namespace VNKit
     /// VNKit — a lightweight, script-driven visual novel engine for Unity.
     /// Drop this component on an empty GameObject, assign a start script, press Play.
     /// The whole stage and UI are built at runtime; no scene setup required.
+    /// Assets (backgrounds, characters, audio) are loaded exclusively via Addressables.
     /// </summary>
     [AddComponentMenu("VNKit/Visual Novel Engine")]
     public class VisualNovelEngine : MonoBehaviour
@@ -19,8 +21,8 @@ namespace VNKit
         public TextAsset startScript;
         public List<TextAsset> additionalScripts = new List<TextAsset>();
 
-        [Header("Content")]
-        [Tooltip("Root folder inside any Resources folder where art/audio is looked up.")]
+        [Header("Content (Addressables)")]
+        [Tooltip("Addressables address prefix. Assets must be marked Addressable as e.g. VN/Backgrounds/Campus")]
         public string resourcesRoot = "VN";
 
         [Header("Presentation")]
@@ -31,6 +33,12 @@ namespace VNKit
         public bool usePlaceholderGraphics = false;
         public Color dialoguePanelColor = new Color(0f, 0f, 0f, 0.72f);
         public Color accentColor = new Color(0.85f, 0.45f, 0.65f, 1f);
+
+        [Header("Loading")]
+        [Tooltip("Show a full-screen loading overlay while Addressables initializes at boot.")]
+        public bool showLoadingScreen = true;
+        [Tooltip("Optional list of Addressables keys to preload during the boot loading screen (e.g. VN/Backgrounds/Campus).")]
+        public List<string> preloadAddresses = new List<string>();
 
         [Header("Behavior")]
         [Tooltip("Track which lines the player has read; skip mode stops at unread text.")]
@@ -52,6 +60,7 @@ namespace VNKit
         public SettingsUI SettingsPanel { get; private set; }
         public TitleUI Title { get; private set; }
         public QuickMenuUI QuickMenu { get; private set; }
+        public LoadingUI Loading { get; private set; }
 
         /// <summary>Handle unknown @commands here (cmd.Name = command name, cmd.Params = parameters).</summary>
         public event Action<VNCommand> CustomCommand;
@@ -105,6 +114,7 @@ namespace VNKit
             SaveLoadPanel = new SaveLoadUI(overlayRoot, this);
             SettingsPanel = new SettingsUI(overlayRoot, this);
             Title = new TitleUI(overlayRoot, this);
+            Loading = new LoadingUI(overlayRoot, gameTitle);
 
             Audio = new VNAudioManager(transform, this);
             Player = new ScriptPlayer(this, VNRunner.Create("VNKit.Player", transform));
@@ -117,6 +127,49 @@ namespace VNKit
 
         void Start()
         {
+            // Hide everything until Addressables is ready.
+            Dialogue.Hide();
+            QuickMenu.SetVisible(false);
+            Title.Hide();
+            if (showLoadingScreen)
+                Loading.Show("Initializing…");
+            StartCoroutine(BootRoutine());
+        }
+
+        IEnumerator BootRoutine()
+        {
+            // 1) Initialize Addressables (catalogs, providers). Required for remote groups / WebGL.
+            if (showLoadingScreen) Loading.SetProgress(0.05f, "Initializing Addressables…");
+            yield return VNResources.Initialize();
+
+            // 2) Optional preload of addresses listed on the engine component.
+            if (preloadAddresses != null && preloadAddresses.Count > 0)
+            {
+                if (showLoadingScreen) Loading.SetProgress(0.15f, "Preloading assets…");
+                yield return VNResources.PreloadSprites(preloadAddresses, (p, addr) =>
+                {
+                    if (showLoadingScreen)
+                        Loading.SetProgress(0.15f + 0.8f * p, string.IsNullOrEmpty(addr) ? "Almost ready…" : "Loading " + addr);
+                });
+            }
+            else
+            {
+                // Short artificial step so the bar is visible even with no preload list.
+                if (showLoadingScreen)
+                {
+                    Loading.SetProgress(0.6f, "Ready");
+                    yield return null;
+                }
+            }
+
+            if (showLoadingScreen)
+            {
+                Loading.SetProgress(1f, "Done");
+                yield return null;
+                Loading.Hide();
+            }
+
+            // 3) Enter game or title screen.
             if (showTitleScreen)
             {
                 Dialogue.Hide();
@@ -264,25 +317,54 @@ namespace VNKit
             return s;
         }
 
-        // ============================== Resources ==============================
+        // ============================== Assets (Addressables) ==============================
 
-        public Sprite LoadBackground(string name)
+        public string BackgroundAddress(string name)
         {
-            var s = VNResources.LoadSprite(resourcesRoot + "/Backgrounds/" + name);
+            return resourcesRoot + "/Backgrounds/" + name;
+        }
+
+        public string CharacterAddress(string name, string appearance)
+        {
+            return resourcesRoot + "/Characters/" + name + "/" + (appearance ?? "Default");
+        }
+
+        public string BgmAddress(string name)   { return resourcesRoot + "/Audio/BGM/" + name; }
+        public string SfxAddress(string name)   { return resourcesRoot + "/Audio/SFX/" + name; }
+        public string VoiceAddress(string name) { return resourcesRoot + "/Audio/Voice/" + name; }
+
+        /// <summary>Async background load. Uses placeholder when missing and flag is on.</summary>
+        public System.Collections.IEnumerator LoadBackgroundAsync(string name, System.Action<Sprite> onDone)
+        {
+            Sprite s = null;
+            yield return VNResources.LoadSprite(BackgroundAddress(name), x => s = x);
             if (s == null && usePlaceholderGraphics) s = PlaceholderArt.Background(name);
-            return s;
+            if (onDone != null) onDone(s);
         }
 
-        public Sprite LoadCharacterSprite(string name, string appearance)
+        /// <summary>Async character sprite load.</summary>
+        public System.Collections.IEnumerator LoadCharacterSpriteAsync(string name, string appearance, System.Action<Sprite> onDone)
         {
-            var s = VNResources.LoadSprite(resourcesRoot + "/Characters/" + name + "/" + appearance);
+            Sprite s = null;
+            yield return VNResources.LoadSprite(CharacterAddress(name, appearance), x => s = x);
             if (s == null && usePlaceholderGraphics) s = PlaceholderArt.Character(name);
-            return s;
+            if (onDone != null) onDone(s);
         }
 
-        public AudioClip LoadBgm(string name)   { return VNResources.LoadClip(resourcesRoot + "/Audio/BGM/" + name); }
-        public AudioClip LoadSfx(string name)   { return VNResources.LoadClip(resourcesRoot + "/Audio/SFX/" + name); }
-        public AudioClip LoadVoice(string name) { return VNResources.LoadClip(resourcesRoot + "/Audio/Voice/" + name); }
+        public System.Collections.IEnumerator LoadBgmAsync(string name, System.Action<AudioClip> onDone)
+        {
+            yield return VNResources.LoadClip(BgmAddress(name), onDone);
+        }
+
+        public System.Collections.IEnumerator LoadSfxAsync(string name, System.Action<AudioClip> onDone)
+        {
+            yield return VNResources.LoadClip(SfxAddress(name), onDone);
+        }
+
+        public System.Collections.IEnumerator LoadVoiceAsync(string name, System.Action<AudioClip> onDone)
+        {
+            yield return VNResources.LoadClip(VoiceAddress(name), onDone);
+        }
 
         // ============================== Save / Load ==============================
 
@@ -322,23 +404,93 @@ namespace VNKit
             HideAllPanels();
             Choice.Hide();
             Player.Stop();
-            Dialogue.Hide(); // stops any in-flight typewriter coroutine
+            Dialogue.Hide();
+            QuickMenu.SetVisible(false);
+
+            // Addressables loads are async — restore via coroutine (with optional loading screen).
+            StartCoroutine(LoadGameRoutine(data));
+            return true;
+        }
+
+        System.Collections.IEnumerator LoadGameRoutine(VNSaveData data)
+        {
+            if (showLoadingScreen && Loading != null)
+            {
+                Loading.Show("Loading save…");
+                Loading.SetProgress(0.1f, "Restoring state…");
+            }
 
             Variables.FromEntries(data.variables);
             RestoreBacklog(data.backlog);
-            Backgrounds.Restore(data.background);
-            if (!string.IsNullOrEmpty(data.bgm)) Audio.PlayBgm(data.bgm, LoadBgm(data.bgm), 0.5f);
+
+            // Background
+            if (string.IsNullOrEmpty(data.background))
+            {
+                Backgrounds.Restore(null, null);
+            }
+            else
+            {
+                if (showLoadingScreen && Loading != null)
+                    Loading.SetProgress(0.25f, "Background…");
+                Sprite bg = null;
+                yield return LoadBackgroundAsync(data.background, s => bg = s);
+                Backgrounds.Restore(data.background, bg);
+            }
+
+            // BGM
+            if (!string.IsNullOrEmpty(data.bgm))
+            {
+                if (showLoadingScreen && Loading != null)
+                    Loading.SetProgress(0.45f, "Music…");
+                AudioClip clip = null;
+                yield return LoadBgmAsync(data.bgm, c => clip = c);
+                Audio.PlayBgm(data.bgm, clip, 0.5f);
+            }
             else Audio.StopBgm(0.1f);
-            Characters.RestoreStates(data.characters);
+
+            // Characters
+            var states = data.characters;
+            var sprites = new List<Sprite>();
+            if (states != null)
+            {
+                int visibleCount = 0;
+                for (int i = 0; i < states.Count; i++)
+                    if (states[i].visible) visibleCount++;
+
+                int loaded = 0;
+                for (int i = 0; i < states.Count; i++)
+                {
+                    if (!states[i].visible) continue;
+                    if (showLoadingScreen && Loading != null && visibleCount > 0)
+                        Loading.SetProgress(0.55f + 0.35f * (loaded / (float)visibleCount),
+                            "Character: " + states[i].name);
+                    Sprite spr = null;
+                    yield return LoadCharacterSpriteAsync(states[i].name, states[i].appearance, s => spr = s);
+                    sprites.Add(spr);
+                    loaded++;
+                }
+            }
+            Characters.RestoreStates(states, sprites);
+
+            if (showLoadingScreen && Loading != null)
+            {
+                Loading.SetProgress(1f, "Done");
+                yield return null;
+                Loading.Hide();
+            }
 
             hudHidden = false;
             Dialogue.SetHudVisible(true);
             QuickMenu.SetVisible(true);
 
-            var s = GetScript(data.scriptName);
-            if (s == null) { VNLog.Warn("Saved script '" + data.scriptName + "' is missing."); return false; }
-            Player.Play(s, data.nextCommandIndex);
-            return true;
+            var script = GetScript(data.scriptName);
+            if (script == null)
+            {
+                VNLog.Warn("Saved script '" + data.scriptName + "' is missing.");
+                if (showTitleScreen) Title.Show();
+                yield break;
+            }
+            Player.Play(script, data.nextCommandIndex);
         }
 
         // ============================== Panels (used by quick menu / buttons) ==============================

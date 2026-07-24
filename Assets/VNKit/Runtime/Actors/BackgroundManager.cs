@@ -74,8 +74,8 @@ namespace VNKit
             fade = runner.StartCoroutine(FadeBoth(time));
         }
 
-        /// <summary>Instant restore from a save file.</summary>
-        public void Restore(string name)
+        /// <summary>Instant restore from a save file. Pass the already-loaded sprite.</summary>
+        public void Restore(string name, Sprite sprite)
         {
             StopFade();
             if (string.IsNullOrEmpty(name))
@@ -86,7 +86,6 @@ namespace VNKit
                 return;
             }
 
-            var sprite = engine.LoadBackground(name);
             Image top = aOnTop ? imgB : imgA;
             CanvasGroup topG = aOnTop ? groupB : groupA;
             CanvasGroup botG = aOnTop ? groupA : groupB;

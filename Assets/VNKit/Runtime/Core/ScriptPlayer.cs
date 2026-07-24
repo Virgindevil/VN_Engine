@@ -80,6 +80,7 @@ namespace VNKit
         {
             bool skipping = (SkipMode || skipHeld)
                 && State != PlayerState.WaitingChoice
+                && State != PlayerState.WaitingAsset
                 && State != PlayerState.Idle
                 && State != PlayerState.Ended;
 
@@ -123,15 +124,30 @@ namespace VNKit
                     case VNCommandType.Choice: if (DoChoice(cmd)) return; break;
                     case VNCommandType.End:    FinishScript(); return;
 
-                    case VNCommandType.Char:      engine.Characters.ApplyCommand(cmd); break;
+                    case VNCommandType.Char:
+                        State = PlayerState.WaitingAsset;
+                        runner.StartCoroutine(CoChar(cmd));
+                        return;
                     case VNCommandType.HideChar:  engine.Characters.Hide(cmd.Name, cmd.GetFloat("time", 0.35f)); break;
                     case VNCommandType.HideChars: engine.Characters.HideAll(cmd.GetFloat("time", 0.35f)); break;
-                    case VNCommandType.Background: DoBackground(cmd); break;
+                    case VNCommandType.Background:
+                        State = PlayerState.WaitingAsset;
+                        runner.StartCoroutine(CoBackground(cmd));
+                        return;
 
-                    case VNCommandType.Bgm:    DoBgm(cmd); break;
+                    case VNCommandType.Bgm:
+                        State = PlayerState.WaitingAsset;
+                        runner.StartCoroutine(CoBgm(cmd));
+                        return;
                     case VNCommandType.StopBgm: engine.Audio.StopBgm(cmd.GetFloat("fade", 1f)); break;
-                    case VNCommandType.Sfx:    engine.Audio.PlaySfx(engine.LoadSfx(cmd.Name), cmd.GetFloat("vol", 1f)); break;
-                    case VNCommandType.Voice:  engine.Audio.PlayVoice(engine.LoadVoice(cmd.Name)); break;
+                    case VNCommandType.Sfx:
+                        State = PlayerState.WaitingAsset;
+                        runner.StartCoroutine(CoSfx(cmd));
+                        return;
+                    case VNCommandType.Voice:
+                        State = PlayerState.WaitingAsset;
+                        runner.StartCoroutine(CoVoice(cmd));
+                        return;
                     case VNCommandType.StopVoice: engine.Audio.StopVoice(); break;
 
                     case VNCommandType.Set: engine.Variables.Apply(cmd.Assignments); break;
@@ -157,9 +173,28 @@ namespace VNKit
 
         void DoSay(VNCommand cmd)
         {
+            // Appearance change may need an Addressables load first.
             if (!string.IsNullOrEmpty(cmd.Appearance) && !string.IsNullOrEmpty(cmd.Speaker))
-                engine.Characters.SetAppearance(cmd.Speaker, cmd.Appearance);
+            {
+                State = PlayerState.WaitingAsset;
+                runner.StartCoroutine(CoSayWithAppearance(cmd));
+                return;
+            }
 
+            PlaySay(cmd);
+        }
+
+        IEnumerator CoSayWithAppearance(VNCommand cmd)
+        {
+            Sprite spr = null;
+            yield return engine.LoadCharacterSpriteAsync(cmd.Speaker, cmd.Appearance, s => spr = s);
+            engine.Characters.SetAppearance(cmd.Speaker, cmd.Appearance, spr);
+            State = PlayerState.Running; // same as sync DoSay path while typewriter runs
+            PlaySay(cmd);
+        }
+
+        void PlaySay(VNCommand cmd)
+        {
             engine.Audio.StopVoice();
             CurrentLineSeen = engine.IsLineSeen(script.Name, cmd.LineNumber);
             engine.MarkLineSeen(script.Name, cmd.LineNumber);
@@ -272,24 +307,79 @@ namespace VNKit
             return true;
         }
 
-        void DoBackground(VNCommand cmd)
+        IEnumerator CoBackground(VNCommand cmd)
         {
             string name = cmd.Name;
-            if (string.IsNullOrEmpty(name) || name == "none")
-                engine.Backgrounds.Clear(cmd.GetFloat("time", 0.8f));
-            else
-                engine.Backgrounds.Set(name, engine.LoadBackground(name), cmd.GetFloat("time", 0.8f));
-        }
-
-        void DoBgm(VNCommand cmd)
-        {
-            string name = cmd.Name;
+            float time = cmd.GetFloat("time", 0.8f);
             if (string.IsNullOrEmpty(name) || name == "none")
             {
-                engine.Audio.StopBgm(cmd.GetFloat("fade", 1f));
-                return;
+                engine.Backgrounds.Clear(time);
             }
-            engine.Audio.PlayBgm(name, engine.LoadBgm(name), cmd.GetFloat("fade", 1f));
+            else
+            {
+                Sprite spr = null;
+                yield return engine.LoadBackgroundAsync(name, s => spr = s);
+                engine.Backgrounds.Set(name, spr, time);
+            }
+            State = PlayerState.Running;
+            Step();
+        }
+
+        IEnumerator CoBgm(VNCommand cmd)
+        {
+            string name = cmd.Name;
+            float fade = cmd.GetFloat("fade", 1f);
+            if (string.IsNullOrEmpty(name) || name == "none")
+            {
+                engine.Audio.StopBgm(fade);
+            }
+            else
+            {
+                AudioClip clip = null;
+                yield return engine.LoadBgmAsync(name, c => clip = c);
+                engine.Audio.PlayBgm(name, clip, fade);
+            }
+            State = PlayerState.Running;
+            Step();
+        }
+
+        IEnumerator CoSfx(VNCommand cmd)
+        {
+            AudioClip clip = null;
+            yield return engine.LoadSfxAsync(cmd.Name, c => clip = c);
+            engine.Audio.PlaySfx(clip, cmd.GetFloat("vol", 1f));
+            State = PlayerState.Running;
+            Step();
+        }
+
+        IEnumerator CoVoice(VNCommand cmd)
+        {
+            AudioClip clip = null;
+            yield return engine.LoadVoiceAsync(cmd.Name, c => clip = c);
+            engine.Audio.PlayVoice(clip);
+            State = PlayerState.Running;
+            Step();
+        }
+
+        IEnumerator CoChar(VNCommand cmd)
+        {
+            // Parse id the same way CharacterManager does, so we know what to load.
+            string id = cmd.Name ?? "";
+            string name = id, appearance = null;
+            int dot = id.IndexOf('.');
+            if (dot >= 0)
+            {
+                name = id.Substring(0, dot);
+                appearance = id.Substring(dot + 1);
+            }
+
+            Sprite spr = null;
+            if (cmd.GetBool("visible", true) && !string.IsNullOrEmpty(name))
+                yield return engine.LoadCharacterSpriteAsync(name, appearance ?? "Default", s => spr = s);
+
+            engine.Characters.ApplyCommand(cmd, spr);
+            State = PlayerState.Running;
+            Step();
         }
 
         void FinishScript()

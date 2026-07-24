@@ -13,12 +13,14 @@ namespace VNKit
         public CharacterManager(Transform stageRoot, VisualNovelEngine engine)
         {
             this.engine = engine;
-            var rootRT = UIFactory.Rect("VNKit.Characters", stageRoot);
-            UIFactory.Stretch(rootRT);
-            runner = rootRT.gameObject.AddComponent<VNRunner>();
+            runner = VNRunner.Create("VNKit.Characters", stageRoot);
         }
 
-        public void ApplyCommand(VNCommand cmd)
+        /// <summary>
+        /// Applies a @char command with a pre-loaded sprite.
+        /// ScriptPlayer loads the sprite via Addressables before calling this.
+        /// </summary>
+        public void ApplyCommand(VNCommand cmd, Sprite sprite)
         {
             if (string.IsNullOrEmpty(cmd.Name))
             {
@@ -41,10 +43,14 @@ namespace VNKit
             CharacterActor existing;
             float fallback = actors.TryGetValue(name, out existing) ? existing.PosX : 0.5f;
             float pos = ParsePos(cmd.Get("pos", cmd.Pos), fallback);
-            Show(name, appearance, pos, time);
+            Show(name, appearance, pos, time, sprite);
         }
 
-        public void Show(string name, string appearance, float pos, float time)
+        /// <summary>
+        /// Shows a character. Pass a pre-loaded sprite (from Addressables).
+        /// If sprite is null and the actor already has the same appearance, keeps the current one.
+        /// </summary>
+        public void Show(string name, string appearance, float pos, float time, Sprite sprite)
         {
             CharacterActor a;
             bool isNew = !actors.TryGetValue(name, out a);
@@ -55,8 +61,10 @@ namespace VNKit
             }
 
             string app = appearance ?? (a.Appearance ?? "Default");
-            if (app != a.Appearance || !a.HasSprite)
-                a.SetSprite(engine.LoadCharacterSprite(name, app), app);
+            if (sprite != null)
+                a.SetSprite(sprite, app);
+            else if (app != a.Appearance || !a.HasSprite)
+                a.SetSprite(null, app);
 
             a.SetPosition(pos, isNew ? 0f : time);
             a.Show(time);
@@ -93,13 +101,13 @@ namespace VNKit
             actors.Clear();
         }
 
-        /// <summary>Instant appearance swap used by "Name.Appearance:" dialogue prefixes.</summary>
-        public void SetAppearance(string name, string appearance)
+        /// <summary>Instant appearance swap. Pass a pre-loaded sprite.</summary>
+        public void SetAppearance(string name, string appearance, Sprite sprite)
         {
             CharacterActor a;
             if (!actors.TryGetValue(name, out a)) return;
-            if (a.Appearance == appearance) return;
-            a.SetSprite(engine.LoadCharacterSprite(name, appearance), appearance);
+            if (a.Appearance == appearance && a.HasSprite) return;
+            a.SetSprite(sprite, appearance);
         }
 
         public List<VNCharState> GetStates()
@@ -114,16 +122,24 @@ namespace VNKit
             return list;
         }
 
-        public void RestoreStates(List<VNCharState> states)
+        /// <summary>
+        /// Instant restore. sprites[i] must match states[i] (same order, only visible entries).
+        /// Call after loading all sprites via Addressables.
+        /// </summary>
+        public void RestoreStates(List<VNCharState> states, List<Sprite> sprites)
         {
             ClearAll();
             if (states == null) return;
-            foreach (var s in states)
+            int si = 0;
+            for (int i = 0; i < states.Count; i++)
             {
+                var s = states[i];
                 if (!s.visible) continue;
                 var a = new CharacterActor(runner.transform, s.name, runner);
                 actors[s.name] = a;
-                a.SetSprite(engine.LoadCharacterSprite(s.name, s.appearance), s.appearance);
+                Sprite spr = (sprites != null && si < sprites.Count) ? sprites[si] : null;
+                si++;
+                a.SetSprite(spr, s.appearance);
                 a.SetPosition(s.pos, 0f);
                 a.Show(0f);
             }
