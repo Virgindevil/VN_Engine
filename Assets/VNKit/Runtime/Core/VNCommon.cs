@@ -8,12 +8,24 @@ namespace VNKit
     [Serializable]
     public class VNSettings
     {
+        // Sound
         public float masterVolume = 1f;
         public float bgmVolume = 0.8f;
         public float sfxVolume = 1f;
         public float voiceVolume = 1f;
+
+        // Game / text
         [Tooltip("Characters per second")] public float textSpeed = 45f;
         [Tooltip("Seconds to wait before advancing in auto mode")] public float autoDelay = 1.2f;
+        [Tooltip("When true, Skip mode stops at unread text; when false, skips everything.")]
+        public bool skipUnreadOnly = true;
+        [Tooltip("Preferred UI / content language code (en, ru, ja, ...).")]
+        public string language = "en";
+
+        // Video
+        public int resolutionWidth = 1920;
+        public int resolutionHeight = 1080;
+        public bool fullscreen = true;
     }
 
     [Serializable]

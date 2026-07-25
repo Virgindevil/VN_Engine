@@ -93,6 +93,7 @@ namespace VNKit
         void Boot()
         {
             LoadSettings();
+            ApplyVideoSettings();
             LoadSeen();
 
             Variables = new VNVariables();
@@ -204,24 +205,28 @@ namespace VNKit
                 else if (BacklogPanel.IsOpen) BacklogPanel.Hide();
                 else if (SaveLoadPanel.IsOpen) SaveLoadPanel.Hide();
                 else if (!Title.IsOpen && Player.State != PlayerState.Idle && Player.State != PlayerState.Ended) OpenSettings();
-                Player.Tick(Time.deltaTime);
                 return;
             }
 
             bool modal = IsModalOpen();
-            Player.SetSkipHeld(!modal && !Title.IsOpen && VNInput.SkipHeld());
-
-            if (!modal && !Title.IsOpen)
+            // While any modal (Settings / Save / Load / Backlog) or Title is open,
+            // freeze advance, auto-play and skip so text does not keep running.
+            if (modal || Title.IsOpen)
             {
-                if (VNInput.HidePressed()) ToggleHud();
-                else if (!hudHidden
-                         && Player.State != PlayerState.WaitingChoice
-                         && Player.State != PlayerState.Idle
-                         && Player.State != PlayerState.Ended
-                         && VNInput.AdvancePressed()
-                         && !VNInput.PointerOverUI())
-                    Player.Advance();
+                Player.SetSkipHeld(false);
+                return;
             }
+
+            Player.SetSkipHeld(VNInput.SkipHeld());
+
+            if (VNInput.HidePressed()) ToggleHud();
+            else if (!hudHidden
+                     && Player.State != PlayerState.WaitingChoice
+                     && Player.State != PlayerState.Idle
+                     && Player.State != PlayerState.Ended
+                     && VNInput.AdvancePressed()
+                     && !VNInput.PointerOverUI())
+                Player.Advance();
 
             Player.Tick(Time.deltaTime);
         }
@@ -574,7 +579,16 @@ namespace VNKit
         public void ApplySettings()
         {
             if (Audio != null) Audio.ApplyVolumes();
+            ApplyVideoSettings();
             PlayerPrefs.SetString(SettingsKey, JsonUtility.ToJson(Settings));
+        }
+
+        void ApplyVideoSettings()
+        {
+            if (Settings.resolutionWidth > 0 && Settings.resolutionHeight > 0)
+                Screen.SetResolution(Settings.resolutionWidth, Settings.resolutionHeight, Settings.fullscreen);
+            else
+                Screen.fullScreen = Settings.fullscreen;
         }
 
         // ============================== Custom commands ==============================

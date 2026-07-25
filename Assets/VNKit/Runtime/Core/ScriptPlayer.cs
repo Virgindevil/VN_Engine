@@ -79,15 +79,20 @@ namespace VNKit
         public void Tick(float dt)
         {
             bool skipping = (SkipMode || skipHeld)
-                && State != PlayerState.WaitingChoice
-                && State != PlayerState.WaitingAsset
-                && State != PlayerState.Idle
-                && State != PlayerState.Ended;
+                            && State != PlayerState.WaitingChoice
+                            && State != PlayerState.WaitingAsset
+                            && State != PlayerState.Idle
+                            && State != PlayerState.Ended;
 
             if (skipping)
             {
-                // Toggled skip mode halts at unseen text; holding Ctrl skips everything.
-                if (SkipMode && !skipHeld && !CurrentLineSeen && (IsTyping || State == PlayerState.WaitingInput))
+                // When skipUnreadOnly is on, toggled Skip stops at unseen text.
+                // Holding Ctrl (skipHeld) always skips everything.
+                bool stopAtUnread = engine.Settings.skipUnreadOnly
+                                    && SkipMode && !skipHeld
+                                    && !CurrentLineSeen
+                                    && (IsTyping || State == PlayerState.WaitingInput);
+                if (stopAtUnread)
                 {
                     SkipMode = false;
                     engine.RefreshQuickMenuToggles();
@@ -107,7 +112,6 @@ namespace VNKit
             }
             else autoTimer = 0f;
         }
-
         // ---------------------------------------------------------------
 
         void Step()
