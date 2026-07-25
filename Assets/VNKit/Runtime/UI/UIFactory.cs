@@ -1,28 +1,47 @@
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using TMPro;
 
 namespace VNKit
 {
     /// <summary>Programmatic uGUI builders so no scene/prefab setup is ever required.</summary>
     public static class UIFactory
     {
-        static Font font;
-        public static Font DefaultFont
+        static TMP_FontAsset tmpFont;
+
+        /// <summary>
+        /// Default TMP font. Loads LiberationSans SDF from TMP Essential Resources,
+        /// or any TMP_FontAsset under Resources. Call SetDefaultFont() to override.
+        /// </summary>
+        public static TMP_FontAsset DefaultTMPFont
         {
             get
             {
-                if (font == null)
+                if (tmpFont != null) return tmpFont;
+
+                tmpFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+                if (tmpFont == null)
+                    tmpFont = Resources.Load<TMP_FontAsset>("Fonts/LiberationSans SDF");
+
+                if (tmpFont == null)
                 {
-                    // Unity 2022.2+ renamed the built-in font from Arial.ttf to LegacyRuntime.ttf.
-                    font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    if (font == null) font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-                    if (font == null)
-                        font = Font.CreateDynamicFontFromOSFont(
-                            new[] { "Arial", "Helvetica", "DejaVu Sans", "Liberation Sans" }, 16);
+                    var all = Resources.LoadAll<TMP_FontAsset>("");
+                    if (all != null && all.Length > 0)
+                        tmpFont = all[0];
                 }
-                return font;
+
+                if (tmpFont == null)
+                    Debug.LogError("[VNKit] TMP font not found. Use Window → TextMeshPro → Import TMP Essential Resources.");
+
+                return tmpFont;
             }
+        }
+
+        /// <summary>Override the default font (e.g. after Addressables load).</summary>
+        public static void SetDefaultFont(TMP_FontAsset font)
+        {
+            if (font != null) tmpFont = font;
         }
 
         static Sprite uiSprite;
@@ -31,9 +50,6 @@ namespace VNKit
             get
             {
                 if (uiSprite != null) return uiSprite;
-
-                // Unity 2022.2+ / Unity 6 no longer ship UI/Skin/UISprite.psd.
-                // Always generate a simple white 9-slice at runtime (no Resources spam).
                 uiSprite = CreateFallbackUISprite();
                 return uiSprite;
             }
@@ -41,7 +57,6 @@ namespace VNKit
 
         /// <summary>
         /// 32×32 white texture with 8-pixel borders so Image.Type.Sliced works.
-        /// Used when the built-in UI skin sprite is missing.
         /// </summary>
         static Sprite CreateFallbackUISprite()
         {
@@ -56,9 +71,8 @@ namespace VNKit
             for (int i = 0; i < pixels.Length; i++)
                 pixels[i] = new Color32(255, 255, 255, 255);
             tex.SetPixels32(pixels);
-            tex.Apply(false, true); // makeNoLongerReadable = true
+            tex.Apply(false, true);
 
-            // Pivot center, pixels-per-unit 100, 9-slice border
             var borderVec = new Vector4(border, border, border, border);
             return Sprite.Create(
                 tex,
@@ -128,26 +142,58 @@ namespace VNKit
             return AddImage(rt.gameObject, color);
         }
 
-        public static Text Text(Transform parent, string name, string content, int size, TextAnchor anchor, Color color)
+        public static TextMeshProUGUI Text(Transform parent, string name, string content,
+            int size, TextAnchor anchor, Color color)
         {
             var rt = Rect(name, parent);
-            var t = rt.gameObject.AddComponent<Text>();
-            t.font = DefaultFont;
-            t.text = content;
+            var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
+            t.font = DefaultTMPFont;
+            t.text = content ?? "";
             t.fontSize = size;
-            t.alignment = anchor;
             t.color = color;
-            t.supportRichText = true;
-            t.horizontalOverflow = HorizontalWrapMode.Wrap;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
+            t.alignment = ToTMPAlignment(anchor);
+            t.richText = true;
+            t.enableWordWrapping = true;
+            t.overflowMode = TextOverflowModes.Overflow;
+            t.raycastTarget = false;
+            t.extraPadding = true;
             return t;
         }
 
+        /// <summary>
+        /// Outline via TMP built-in outline. dist is approximate legacy Outline distance in px.
+        /// </summary>
         public static void AddOutline(Graphic g, Color c, float dist)
         {
-            var o = g.gameObject.AddComponent<Outline>();
+            var tmp = g as TextMeshProUGUI;
+            if (tmp != null)
+            {
+                tmp.outlineColor = c;
+                tmp.outlineWidth = Mathf.Clamp(dist * 0.12f, 0.1f, 0.45f);
+                return;
+            }
+
+            var o = g.gameObject.GetComponent<Outline>();
+            if (o == null) o = g.gameObject.AddComponent<Outline>();
             o.effectColor = c;
             o.effectDistance = new Vector2(dist, -dist);
+        }
+
+        static TextAlignmentOptions ToTMPAlignment(TextAnchor a)
+        {
+            switch (a)
+            {
+                case TextAnchor.UpperLeft:    return TextAlignmentOptions.TopLeft;
+                case TextAnchor.UpperCenter:  return TextAlignmentOptions.Top;
+                case TextAnchor.UpperRight:   return TextAlignmentOptions.TopRight;
+                case TextAnchor.MiddleLeft:   return TextAlignmentOptions.Left;
+                case TextAnchor.MiddleCenter: return TextAlignmentOptions.Center;
+                case TextAnchor.MiddleRight:  return TextAlignmentOptions.Right;
+                case TextAnchor.LowerLeft:    return TextAlignmentOptions.BottomLeft;
+                case TextAnchor.LowerCenter:  return TextAlignmentOptions.Bottom;
+                case TextAnchor.LowerRight:   return TextAlignmentOptions.BottomRight;
+                default:                     return TextAlignmentOptions.Center;
+            }
         }
 
         public static LayoutElement Layout(GameObject go, float prefWidth, float prefHeight)
@@ -179,6 +225,7 @@ namespace VNKit
             var rt = Rect(name, parent);
             var img = AddImage(rt.gameObject, ButtonColor);
             img.sprite = UISprite;
+            // Fully qualified: UIFactory has a method named Image()
             img.type = UnityEngine.UI.Image.Type.Sliced;
             var btn = rt.gameObject.AddComponent<Button>();
             btn.targetGraphic = img;
@@ -287,7 +334,8 @@ namespace VNKit
 
             var viewport = Rect("Viewport", rt);
             Stretch(viewport);
-            AddImage(viewport.gameObject, new Color(1f, 1f, 1f, 1f));
+            // Alpha must be > 0 for the Mask stencil to work reliably.
+            AddImage(viewport.gameObject, new Color(1f, 1f, 1f, 0.01f));
             var mask = viewport.gameObject.AddComponent<Mask>();
             mask.showMaskGraphic = false;
 

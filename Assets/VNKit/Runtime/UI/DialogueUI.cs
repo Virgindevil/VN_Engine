@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace VNKit
 {
@@ -13,9 +14,9 @@ namespace VNKit
 
         readonly GameObject root;
         readonly GameObject namePlate;
-        readonly Text nameText;
-        readonly Text messageText;
-        readonly Text continueIcon;
+        readonly TextMeshProUGUI nameText;
+        readonly TextMeshProUGUI messageText;
+        readonly TextMeshProUGUI continueIcon;
         readonly VNRunner runner;
         readonly VisualNovelEngine engine;
 
@@ -26,10 +27,8 @@ namespace VNKit
         public DialogueUI(Transform parent, VisualNovelEngine engine)
         {
             this.engine = engine;
-            var rootRT = UIFactory.Rect("VNKit.Dialogue", parent);
-            UIFactory.Stretch(rootRT);
-            root = rootRT.gameObject;
-            runner = root.AddComponent<VNRunner>();
+            runner = VNRunner.Create("VNKit.Dialogue", parent);
+            root = runner.gameObject;
 
             // Bottom panel (clickable to advance)
             var panel = UIFactory.Rect("Panel", root.transform);
@@ -59,7 +58,7 @@ namespace VNKit
             plateImg.type = Image.Type.Sliced;
             nameText = UIFactory.Text(namePlate.transform, "Name", "", 30, TextAnchor.MiddleCenter, Color.white);
             UIFactory.Stretch((RectTransform)nameText.transform);
-            nameText.fontStyle = FontStyle.Bold;
+            nameText.fontStyle = FontStyles.Bold;
             UIFactory.AddOutline(nameText, new Color(0f, 0f, 0f, 0.6f), 1f);
 
             // Continue indicator
@@ -69,7 +68,7 @@ namespace VNKit
             crt.anchorMax = new Vector2(0.99f, 0.18f);
             crt.offsetMin = Vector2.zero;
             crt.offsetMax = Vector2.zero;
-            continueIcon.fontStyle = FontStyle.Bold;
+            continueIcon.fontStyle = FontStyles.Bold;
             continueIcon.gameObject.SetActive(false);
             runner.StartCoroutine(BlinkRoutine());
 

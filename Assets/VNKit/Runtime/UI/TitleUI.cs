@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace VNKit
 {
@@ -38,7 +39,7 @@ namespace VNKit
             trt.anchorMax = new Vector2(0.85f, 0.80f);
             trt.offsetMin = Vector2.zero;
             trt.offsetMax = Vector2.zero;
-            title.fontStyle = FontStyle.Bold;
+            title.fontStyle = FontStyles.Bold;
             UIFactory.AddOutline(title, new Color(0f, 0f, 0f, 0.8f), 2f);
 
             // Buttons

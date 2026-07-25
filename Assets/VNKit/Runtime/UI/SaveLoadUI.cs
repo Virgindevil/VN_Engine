@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace VNKit
 {
@@ -14,7 +15,7 @@ namespace VNKit
         readonly GameObject root;
         readonly VisualNovelEngine engine;
         readonly RectTransform grid;
-        readonly Text titleText;
+        readonly TextMeshProUGUI titleText;
         Mode mode;
 
         public SaveLoadUI(Transform parent, VisualNovelEngine engine)
@@ -29,8 +30,8 @@ namespace VNKit
                 new Vector2(0.10f, 0.07f), new Vector2(0.90f, 0.93f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
 
-            // Window() created the header text named "Title" — grab it for mode switching.
-            titleText = win.GetComponent<RectTransform>().Find("Header/Title").GetComponent<Text>();
+            // Window() created the header text named "Title"
+            titleText = win.Find("Header/Title").GetComponent<TextMeshProUGUI>();
 
             grid = UIFactory.Rect("Grid", win);
             grid.anchorMin = new Vector2(0.03f, 0.03f);
@@ -80,7 +81,6 @@ namespace VNKit
             var btn = UIFactory.Button(grid, "Slot" + slot, "", 20, delegate { OnSlotClicked(captured); });
             var brt = (RectTransform)btn.transform;
 
-            // Thumbnail (left side)
             var thumbRT = UIFactory.Rect("Thumb", brt);
             thumbRT.anchorMin = new Vector2(0.03f, 0.08f);
             thumbRT.anchorMax = new Vector2(0.32f, 0.92f);
@@ -98,7 +98,6 @@ namespace VNKit
                 }
             }
 
-            // Slot label
             var slotLabel = UIFactory.Text(brt, "SlotLabel", "Slot " + slot, 24,
                 TextAnchor.MiddleLeft, Color.white);
             var slrt = (RectTransform)slotLabel.transform;
@@ -107,7 +106,6 @@ namespace VNKit
             slrt.offsetMin = Vector2.zero;
             slrt.offsetMax = Vector2.zero;
 
-            // Info text
             string info;
             if (meta != null)
             {
@@ -126,9 +124,7 @@ namespace VNKit
             irt.offsetMax = Vector2.zero;
 
             if (mode == Mode.Load && !has)
-            {
                 btn.interactable = false;
-            }
         }
 
         void OnSlotClicked(int slot)
@@ -139,7 +135,7 @@ namespace VNKit
             }
             else
             {
-                engine.LoadGame(slot); // on success the engine closes this panel
+                engine.LoadGame(slot);
             }
         }
     }

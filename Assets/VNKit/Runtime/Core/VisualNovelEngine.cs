@@ -29,6 +29,7 @@ namespace VNKit
         public bool showTitleScreen = true;
         public string gameTitle = "My Visual Novel";
         public Sprite titleBackground;
+        public Sprite titleLogo;
         [Tooltip("Generate colored placeholder sprites when an art asset is missing. Great for prototyping.")]
         public bool usePlaceholderGraphics = false;
         public Color dialoguePanelColor = new Color(0f, 0f, 0f, 0.72f);

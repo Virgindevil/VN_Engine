@@ -1,20 +1,20 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace VNKit
 {
     /// <summary>
     /// Simple full-screen loading / preloader overlay.
     /// Used at boot while Addressables initializes and optional assets preload.
-    /// Also usable for longer in-game loads if desired.
     /// </summary>
     public class LoadingUI
     {
         public bool IsOpen { get { return root != null && root.activeSelf; } }
 
         readonly GameObject root;
-        readonly Text statusText;
-        readonly Text percentText;
+        readonly TextMeshProUGUI statusText;
+        readonly TextMeshProUGUI percentText;
         readonly Image barFill;
         readonly RectTransform barFillRT;
         readonly float barMaxWidth;
@@ -24,11 +24,9 @@ namespace VNKit
             root = UIFactory.Rect("VNKit.Loading", parent).gameObject;
             UIFactory.Stretch((RectTransform)root.transform);
 
-            // Solid dark backdrop
             var bg = UIFactory.AddImage(root, new Color(0.04f, 0.05f, 0.08f, 1f));
             bg.raycastTarget = true;
 
-            // Title
             var titleT = UIFactory.Text(root.transform, "Title", title, 48,
                 TextAnchor.MiddleCenter, Color.white);
             var trt = (RectTransform)titleT.transform;
@@ -36,10 +34,9 @@ namespace VNKit
             trt.anchorMax = new Vector2(0.8f, 0.68f);
             trt.offsetMin = Vector2.zero;
             trt.offsetMax = Vector2.zero;
-            titleT.fontStyle = FontStyle.Bold;
+            titleT.fontStyle = FontStyles.Bold;
             UIFactory.AddOutline(titleT, new Color(0f, 0f, 0f, 0.6f), 2f);
 
-            // Status line
             statusText = UIFactory.Text(root.transform, "Status", "Please wait…", 22,
                 TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.7f));
             var srt = (RectTransform)statusText.transform;
@@ -48,7 +45,6 @@ namespace VNKit
             srt.offsetMin = Vector2.zero;
             srt.offsetMax = Vector2.zero;
 
-            // Progress bar background
             var barBgRT = UIFactory.Rect("BarBG", root.transform);
             barBgRT.anchorMin = new Vector2(0.25f, 0.36f);
             barBgRT.anchorMax = new Vector2(0.75f, 0.40f);
@@ -58,7 +54,6 @@ namespace VNKit
             barBg.type = Image.Type.Sliced;
             barBg.sprite = UIFactory.UISprite;
 
-            // Fill
             barFillRT = UIFactory.Rect("BarFill", barBgRT);
             barFillRT.anchorMin = Vector2.zero;
             barFillRT.anchorMax = new Vector2(0f, 1f);
@@ -72,7 +67,6 @@ namespace VNKit
 
             barMaxWidth = 960f;
 
-            // Percent text
             percentText = UIFactory.Text(root.transform, "Percent", "0%", 20,
                 TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.55f));
             var prt = (RectTransform)percentText.transform;
@@ -81,7 +75,6 @@ namespace VNKit
             prt.offsetMin = Vector2.zero;
             prt.offsetMax = Vector2.zero;
 
-            // Footer
             var foot = UIFactory.Text(root.transform, "Footer", "VNKit", 16,
                 TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.25f));
             var frt = (RectTransform)foot.transform;
@@ -106,6 +99,7 @@ namespace VNKit
             root.SetActive(false);
         }
 
+        /// <summary>progress 0..1. Optional status message and percent display.</summary>
         public void SetProgress(float progress, string status = null)
         {
             progress = Mathf.Clamp01(progress);
