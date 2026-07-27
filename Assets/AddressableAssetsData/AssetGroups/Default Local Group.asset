@@ -17,18 +17,18 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 1d294c62c267a6a41821fe898f4f3048
   m_SerializeEntries:
+  - m_GUID: 0ecb0ed5861438f4c93a6c2749eaa717
+    m_Address: VN/Characters/Rin/Smile
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 296b5042e04d5ae49862d38248d7f6da
     m_Address: VN/Audio/SFX/Chime
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 368a230963090264b9f32bb76b8c0d00
-    m_Address: VN/Characters/Ayame/Smile
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 3f3daba8786bfb54d923965b1a8eda07
-    m_Address: VN/Backgrounds/Classroom
+  - m_GUID: 2d4e53b0c65d4514c92990d9fed4c3bc
+    m_Address: VN/Backgrounds/Campus
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -37,28 +37,33 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 56cb314c785adbe4e8b49701fc27198b
+  - m_GUID: 6c644d53aeefb24418630ea1f15ffee1
+    m_Address: VN/Characters/Ayame/Smile
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 95c7e16872eb71648ad50d114f5a31c6
     m_Address: VN/Characters/Rin/Default
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 5e7b1f859b7dbb04791da2115e3b62a3
-    m_Address: VN/Characters/Rin/Smile
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 87e951bcf86d8184c84bc0214a39c4d7
-    m_Address: VN/Characters/Ayame/Default
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 91a71be2343f1164b9ae0875556e0b83
-    m_Address: VN/Backgrounds/Campus
+  - m_GUID: b66f9ae3ae3b0cb469b7b9df32fb00f6
+    m_Address: VN/Backgrounds/Rooftop
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cb6599381bc632c48ba980c3fa183725
     m_Address: VN/Audio/BGM/ThemeDay
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: df7f2146b6fcfab4b9c6e4f62843ff11
+    m_Address: VN/Backgrounds/Night
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: f2434a284d2c8ba46a9ada2ffb4f30d6
+    m_Address: VN/Characters/Ayame/Default
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

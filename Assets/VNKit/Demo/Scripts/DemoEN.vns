@@ -38,6 +38,7 @@ Ayame: Give them a chance, Rin.
 @goto Rooftop
 
 # Rooftop
+
 @bg Rooftop time:1.2
 @stopBgm fade:2
 

@@ -33,14 +33,14 @@ namespace VNKit
 
             // Title text
             var title = UIFactory.Text(root.transform, "Title", engine.gameTitle, 76,
-                TextAnchor.MiddleCenter, Color.white);
+                TextAnchor.MiddleCenter, Color.black);
             var trt = (RectTransform)title.transform;
             trt.anchorMin = new Vector2(0.15f, 0.58f);
             trt.anchorMax = new Vector2(0.85f, 0.80f);
             trt.offsetMin = Vector2.zero;
             trt.offsetMax = Vector2.zero;
             title.fontStyle = FontStyles.Bold;
-            UIFactory.AddOutline(title, new Color(0f, 0f, 0f, 0.8f), 2f);
+            UIFactory.AddOutline(title, new Color(1f, 1f, 1f, 0.8f), 2f);
 
             // Buttons
             var column = UIFactory.Rect("Buttons", root.transform);

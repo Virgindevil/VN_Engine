@@ -166,24 +166,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075103fae8a46c69fce87e6efd9e022, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startScript: {fileID: 9027929339269108002, guid: e23aff74e344430cbabf7c17b7a187df, type: 3}
+  startScript: {fileID: 9027929339269108002, guid: d8f69279b32749248b24cda0554b1023, type: 3}
   additionalScripts:
-  - {fileID: 9027929339269108002, guid: 3f581f09dc6182140981378ff46b7417, type: 3}
   - {fileID: 9027929339269108002, guid: 662af4f1d1a344f280d0cc7adf0730bd, type: 3}
   resourcesRoot: VN
   showTitleScreen: 1
-  gameTitle: VNKit Demo
-  titleBackground: {fileID: 0}
-  usePlaceholderGraphics: 1
+  gameTitle: Novel Test
+  titleBackground: {fileID: 21300000, guid: 2d4e53b0c65d4514c92990d9fed4c3bc, type: 3}
+  titleLogo: {fileID: 21300000, guid: 7f484c07f98c78045af4b5dc4ed34b85, type: 3}
+  usePlaceholderGraphics: 0
   dialoguePanelColor: {r: 0, g: 0, b: 0, a: 0.72}
-  accentColor: {r: 0.85, g: 0.45, b: 0.65, a: 1}
+  accentColor: {r: 1, g: 0, b: 0.056250572, a: 1}
   showLoadingScreen: 1
   preloadAddresses:
   - VN/Backgrounds/Campus
-  - VN/Backgrounds/Classroom
   - VN/Characters/Ayame/Default
   - VN/Characters/Ayame/Smile
-  - VN/Characters/Hana/Default
   saveSeenText: 1
   Settings:
     masterVolume: 1
@@ -192,6 +190,11 @@ MonoBehaviour:
     voiceVolume: 1
     textSpeed: 45
     autoDelay: 1.2
+    skipUnreadOnly: 1
+    language: ru
+    resolutionWidth: 1920
+    resolutionHeight: 1080
+    fullscreen: 1
 --- !u!1 &1004788606
 GameObject:
   m_ObjectHideFlags: 0

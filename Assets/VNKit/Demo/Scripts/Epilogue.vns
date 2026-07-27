@@ -2,7 +2,7 @@
 
 # Start
 @bg Night time:1.5
-Somewhere beyond the hills, the story continues...
+Там за холмами, эта история продолжится...
 @wait 1.0
 <b>THE END</b>
 @end
