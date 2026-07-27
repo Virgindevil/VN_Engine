@@ -4,17 +4,17 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Executes a parsed VNScript command by command.
-    /// Owns the play state machine, auto mode and skip mode.
-    /// </summary>
+    /*
+    Выполняет разобранную команду VNScript пошагово.
+    Управляет конечным автоматом воспроизведения, автоматическим режимом и режимом пропуска.
+    */
     public class ScriptPlayer
     {
         readonly VisualNovelEngine engine;
         readonly VNRunner runner;
 
         VNScript script;
-        int index;                      // next command to execute
+        int index;                      
         bool finishWait;
         bool skipHeld;
         float skipTimer;
@@ -56,7 +56,7 @@ namespace VNKit
 
         public void SetSkipHeld(bool held) { skipHeld = held; }
 
-        /// <summary>Player pressed advance (click / space / enter).</summary>
+        // Игрок нажал кнопку "Перемотать вперед" (клик мыши / пробел / Enter)
         public void Advance()
         {
             if (IsTyping) { engine.Dialogue.CompleteLine(); return; }
@@ -86,8 +86,8 @@ namespace VNKit
 
             if (skipping)
             {
-                // When skipUnreadOnly is on, toggled Skip stops at unseen text.
-                // Holding Ctrl (skipHeld) always skips everything.
+                // Когда параметр skipUnreadOnly включен, переключение режима пропуска останавливает чтение на непрочитанном тексте.
+                // Удерживание клавиши Ctrl (skipHeld) всегда пропускает все.
                 bool stopAtUnread = engine.Settings.skipUnreadOnly
                                     && SkipMode && !skipHeld
                                     && !CurrentLineSeen
@@ -112,7 +112,7 @@ namespace VNKit
             }
             else autoTimer = 0f;
         }
-        // ---------------------------------------------------------------
+        
 
         void Step()
         {
@@ -275,7 +275,7 @@ namespace VNKit
             Step();
         }
 
-        /// <summary>Supports "Label" and "OtherScript.Label". Returns false when unresolvable.</summary>
+        // Поддерживает "Label" и "OtherScript.Label". Возвращает false, если не удаётся разрешить имя
         bool DoGoto(string label)
         {
             if (string.IsNullOrEmpty(label))

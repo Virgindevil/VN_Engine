@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    /// <summary>One on-stage character: a sprite anchored to a horizontal position, with fades and slides.</summary>
+    /// <summary>Один персонаж на сцене: спрайт, зафиксированный в горизонтальном положении, с эффектами затухания и скольжения</summary>
     public class CharacterActor
     {
         public string Name { get; private set; }
@@ -19,7 +19,7 @@ namespace VNKit
         readonly VNRunner host;
         Coroutine anim;
 
-        const float CharHeight = 940f; // in 1920x1080 reference space
+        const float CharHeight = 940f; // для соотношения сторон 1920x1080 
 
         public CharacterActor(Transform parent, string name, VNRunner host)
         {

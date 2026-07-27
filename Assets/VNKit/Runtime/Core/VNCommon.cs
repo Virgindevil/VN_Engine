@@ -41,15 +41,15 @@ namespace VNKit
         public static void Error(string msg) { Debug.LogError("[VNKit] " + msg); }
     }
 
-    /// <summary>Tiny MonoBehaviour used purely as a coroutine host for non-Mono services.</summary>
+    // Tiny MonoBehaviour используется исключительно в качестве хоста для сопрограмм для сервисов, не использующих MonoBehaviour.
     public class VNRunner : MonoBehaviour
     {
-        /// <summary>
-        /// Creates a coroutine host. When parent is a RectTransform (UI hierarchy),
-        /// the host is stretched to fill it so children that use fractional anchors
-        /// (DialogueUI, CharacterActor, BackgroundManager base layer) get a real size
-        /// instead of collapsing to a 0×0 point at the center.
-        /// </summary>
+        /*
+        Создает хост сопрограммы. Если родительский элемент — RectTransform (иерархия пользовательского интерфейса),
+        хост растягивается, чтобы заполнить его, так что дочерние элементы, использующие дробные привязки
+        (базовый слой DialogueUI, CharacterActor, BackgroundManager), получают реальный размер
+        вместо того, чтобы сжиматься до точки 0×0 в центре.
+        */
         public static VNRunner Create(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));

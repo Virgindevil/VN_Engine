@@ -22,7 +22,7 @@ namespace VNKit
         public bool visible;
     }
 
-    /// <summary>Everything needed to resume a play session. Serialized with JsonUtility.</summary>
+    //Все необходимое для возобновления игровой сессии. Сериализовано с помощью JsonUtility
     [Serializable]
     public class VNSaveData
     {

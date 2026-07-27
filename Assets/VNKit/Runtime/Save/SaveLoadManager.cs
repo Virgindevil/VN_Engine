@@ -4,10 +4,10 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /// <summary>
-    /// JSON save files + PNG thumbnails under Application.persistentDataPath/VNSaves.
-    /// 12 slots by default.
-    /// </summary>
+    /*
+    Файлы сохранения в формате JSON + миниатюры в формате PNG находятся в папке Application.persistentDataPath/VNSaves.
+    По умолчанию 12 слотов.
+    */
     public class SaveLoadManager
     {
         public const int SlotCount = 12;
@@ -64,7 +64,7 @@ namespace VNKit
             return null;
         }
 
-        /// <summary>Hides the given UI for one frame, captures the screen, restores the UI.</summary>
+        //Скрывает заданный интерфейс на один кадр, делает снимок экрана, затем восстанавливает интерфейс
         public void CaptureThumbnail(MonoBehaviour host, GameObject uiToHide, int slot)
         {
             host.StartCoroutine(CaptureRoutine(uiToHide, slot));

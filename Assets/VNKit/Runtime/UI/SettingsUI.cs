@@ -7,10 +7,10 @@ using TMPro;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Tabbed settings: Sound (volumes), Video (resolution / fullscreen), Game (text speed, auto, skip, language, hotkeys).
-    /// Changes are applied and persisted immediately.
-    /// </summary>
+    /*
+    Настройки во вкладках: Звук (громкость), Видео (разрешение / полноэкранный режим), Игра (скорость текста, авто, пропуск, язык, горячие клавиши).
+    Изменения применяются и сохраняются немедленно.
+    */
     public class SettingsUI
     {
         public bool IsOpen { get { return root.activeSelf; } }
@@ -43,7 +43,7 @@ namespace VNKit
                 new Vector2(0.26f, 0.10f), new Vector2(0.74f, 0.90f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
 
-            // ---- Tab bar under header ----
+            // ---- Панель вкладок под заголовком ----
             var tabBar = UIFactory.Rect("TabBar", win);
             tabBar.anchorMin = new Vector2(0.04f, 0.86f);
             tabBar.anchorMax = new Vector2(0.96f, 0.93f);
@@ -63,7 +63,7 @@ namespace VNKit
             videoTab = MakeTab(tabBar, "Video", () => ShowTab(1));
             gameTab  = MakeTab(tabBar, "Game",  () => ShowTab(2));
 
-            // ---- Content area ----
+            // ---- Область содержимого ----
             var contentArea = UIFactory.Rect("ContentArea", win);
             contentArea.anchorMin = new Vector2(0.04f, 0.04f);
             contentArea.anchorMax = new Vector2(0.96f, 0.85f);

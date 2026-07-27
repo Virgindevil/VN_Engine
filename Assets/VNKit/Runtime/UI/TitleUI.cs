@@ -4,7 +4,7 @@ using TMPro;
 
 namespace VNKit
 {
-    /// <summary>Simple title screen: game name, New Game / Load / Settings / Quit.</summary>
+    // Простой титульный экран: название игры, Новая игра / Загрузка / Настройки / Выход
     public class TitleUI
     {
         public bool IsOpen { get { return root.activeSelf; } }

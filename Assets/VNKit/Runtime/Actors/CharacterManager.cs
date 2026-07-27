@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /// <summary>Spawns, moves, hides and restores the on-stage characters.</summary>
+    /// <summary>Создает, перемещает, скрывает и восстанавливает персонажей на сцене</summary>
     public class CharacterManager
     {
         readonly VisualNovelEngine engine;
@@ -16,10 +16,10 @@ namespace VNKit
             runner = VNRunner.Create("VNKit.Characters", stageRoot);
         }
 
-        /// <summary>
-        /// Applies a @char command with a pre-loaded sprite.
-        /// ScriptPlayer loads the sprite via Addressables before calling this.
-        /// </summary>
+        /*
+        Применяет команду @char с предварительно загруженным спрайтом.
+        ScriptPlayer загружает спрайт через Addressables перед вызовом этой функции.
+        */ 
         public void ApplyCommand(VNCommand cmd, Sprite sprite)
         {
             if (string.IsNullOrEmpty(cmd.Name))
@@ -46,10 +46,10 @@ namespace VNKit
             Show(name, appearance, pos, time, sprite);
         }
 
-        /// <summary>
-        /// Shows a character. Pass a pre-loaded sprite (from Addressables).
-        /// If sprite is null and the actor already has the same appearance, keeps the current one.
-        /// </summary>
+        /*
+        Отображает персонажа. Передайте предварительно загруженный спрайт (из Addressables).
+        Если спрайт равен null, а у актора уже есть такой же внешний вид, сохранит текущий.
+        */
         public void Show(string name, string appearance, float pos, float time, Sprite sprite)
         {
             CharacterActor a;
@@ -101,7 +101,7 @@ namespace VNKit
             actors.Clear();
         }
 
-        /// <summary>Instant appearance swap. Pass a pre-loaded sprite.</summary>
+        //Мгновенная смена внешнего вида. Передаёт предварительно загруженный спрайт
         public void SetAppearance(string name, string appearance, Sprite sprite)
         {
             CharacterActor a;
@@ -122,10 +122,10 @@ namespace VNKit
             return list;
         }
 
-        /// <summary>
-        /// Instant restore. sprites[i] must match states[i] (same order, only visible entries).
-        /// Call after loading all sprites via Addressables.
-        /// </summary>
+        /*
+        Мгновенное восстановление. sprites[i] должны соответствовать states[i] (тот же порядок, только видимые элементы).
+        Вызывается после загрузки всех спрайтов через Addressables.
+        */
         public void RestoreStates(List<VNCharState> states, List<Sprite> sprites)
         {
             ClearAll();
@@ -145,7 +145,7 @@ namespace VNKit
             }
         }
 
-        /// <summary>left / midleft / center / midright / right, or a 0..1 fraction.</summary>
+        // лево / среднее лево / центр / среднее право / право, или дробь от 0 до 1
         public static float ParsePos(string token, float fallback)
         {
             if (string.IsNullOrEmpty(token)) return fallback;

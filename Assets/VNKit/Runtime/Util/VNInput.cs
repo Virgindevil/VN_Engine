@@ -3,10 +3,10 @@ using UnityEngine.EventSystems;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Input abstraction that works with the legacy Input Manager,
-    /// the new Input System package, or both (compile-time switched).
-    /// </summary>
+    /*
+    Абстракция ввода, работающая с устаревшим менеджером ввода,
+    новым пакетом системы ввода или обоими (с переключением на этапе компиляции).
+    */
     public static class VNInput
     {
         public static bool AdvancePressed()

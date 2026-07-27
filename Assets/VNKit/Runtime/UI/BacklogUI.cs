@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    /// <summary>Scrollable history of previously displayed lines.</summary>
+    //Прокручиваемая история ранее отображенных строк
     public class BacklogUI
     {
         public bool IsOpen { get { return root.activeSelf; } }
@@ -62,7 +62,7 @@ namespace VNKit
             }
 
             Canvas.ForceUpdateCanvases();
-            scroll.verticalNormalizedPosition = 0f; // jump to the newest line
+            scroll.verticalNormalizedPosition = 0f; // переход на новую линию
         }
 
         public void Hide()

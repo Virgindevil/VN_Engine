@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /// <summary>BGM with crossfade, a small SFX pool, and a single voice channel.</summary>
+    //Музыкальное сопровождение с плавным переходом, небольшим набором звуковых эффектов и одним голосовым каналом
     public class VNAudioManager
     {
         public string CurrentBgm { get; private set; }

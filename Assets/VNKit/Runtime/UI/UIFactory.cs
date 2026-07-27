@@ -5,15 +5,15 @@ using TMPro;
 
 namespace VNKit
 {
-    /// <summary>Programmatic uGUI builders so no scene/prefab setup is ever required.</summary>
+    // Программные конструкторы графического интерфейса пользователя, поэтому настройка сцен/префабов никогда не требуется 
     public static class UIFactory
     {
         static TMP_FontAsset tmpFont;
 
-        /// <summary>
-        /// Default TMP font. Loads LiberationSans SDF from TMP Essential Resources,
-        /// or any TMP_FontAsset under Resources. Call SetDefaultFont() to override.
-        /// </summary>
+        /*
+        Шрифт TMP по умолчанию. Загружает SDF-файл LiberationSans из основных ресурсов TMP,
+        или любой ресурс TMP_FontAsset в разделе «Ресурсы». Вызовите SetDefaultFont() для переопределения.
+        */
         public static TMP_FontAsset DefaultTMPFont
         {
             get
@@ -38,7 +38,7 @@ namespace VNKit
             }
         }
 
-        /// <summary>Override the default font (e.g. after Addressables load).</summary>
+        // Переопределяем шрифт по умолчанию (например, после загрузки Addressables)
         public static void SetDefaultFont(TMP_FontAsset font)
         {
             if (font != null) tmpFont = font;
@@ -55,9 +55,9 @@ namespace VNKit
             }
         }
 
-        /// <summary>
-        /// 32×32 white texture with 8-pixel borders so Image.Type.Sliced works.
-        /// </summary>
+        /*
+        Белая текстура размером 32×32 пикселя с 8-пиксельными границами, поэтому Image.Type.Sliced работает.
+        */
         static Sprite CreateFallbackUISprite()
         {
             const int size = 32;
@@ -160,9 +160,9 @@ namespace VNKit
             return t;
         }
 
-        /// <summary>
-        /// Outline via TMP built-in outline. dist is approximate legacy Outline distance in px.
-        /// </summary>
+        /*
+        Контур создан с помощью встроенной функции контура TMP. dist — это приблизительное расстояние контура в пикселях
+        */
         public static void AddOutline(Graphic g, Color c, float dist)
         {
             var tmp = g as TextMeshProUGUI;
@@ -334,7 +334,6 @@ namespace VNKit
 
             var viewport = Rect("Viewport", rt);
             Stretch(viewport);
-            // Alpha must be > 0 for the Mask stencil to work reliably.
             AddImage(viewport.gameObject, new Color(1f, 1f, 1f, 0.01f));
             var mask = viewport.gameObject.AddComponent<Mask>();
             mask.showMaskGraphic = false;
@@ -366,7 +365,7 @@ namespace VNKit
             return scroll;
         }
 
-        /// <summary>Centered window with background, title bar and a close button.</summary>
+        // Окно, расположенное по центру, с фоном, заголовком и кнопкой закрытия.
         public static RectTransform Window(Transform parent, string title, Vector2 min, Vector2 max, out Button closeButton)
         {
             var win = Rect("Window", parent);
@@ -400,7 +399,7 @@ namespace VNKit
             return win;
         }
 
-        /// <summary>Full-screen dimming layer that blocks clicks to whatever is behind it.</summary>
+        // Полноэкранный слой затемнения, блокирующий клики по элементам, находящимся за ним
         public static Image DimBackground(GameObject root, float alpha)
         {
             var img = AddImage(root, new Color(0f, 0f, 0f, alpha));

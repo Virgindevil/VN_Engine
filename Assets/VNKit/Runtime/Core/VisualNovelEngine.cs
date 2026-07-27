@@ -6,12 +6,12 @@ using UnityEngine.EventSystems;
 
 namespace VNKit
 {
-    /// <summary>
-    /// VNKit — a lightweight, script-driven visual novel engine for Unity.
-    /// Drop this component on an empty GameObject, assign a start script, press Play.
-    /// The whole stage and UI are built at runtime; no scene setup required.
-    /// Assets (backgrounds, characters, audio) are loaded exclusively via Addressables.
-    /// </summary>
+    /*
+    VNKit — легковесный, управляемый скриптами движок для визуальных новелл в Unity.
+    Перетащите этот компонент на пустой GameObject, назначьте скрипт запуска и нажмите «Играть».
+    Вся сцена и пользовательский интерфейс создаются во время выполнения; настройка сцены не требуется.
+    Ресурсы (фоны, персонажи, звук) загружаются исключительно через Addressables.
+    */
     [AddComponentMenu("VNKit/Visual Novel Engine")]
     public class VisualNovelEngine : MonoBehaviour
     {
@@ -47,7 +47,7 @@ namespace VNKit
 
         public VNSettings Settings = new VNSettings();
 
-        // ---- Runtime services (created in Awake) ----
+        // ---- Службы среды выполнения (создаются в Awake) ----
         public VNVariables Variables { get; private set; }
         public ScriptPlayer Player { get; private set; }
         public CharacterManager Characters { get; private set; }
@@ -63,9 +63,9 @@ namespace VNKit
         public QuickMenuUI QuickMenu { get; private set; }
         public LoadingUI Loading { get; private set; }
 
-        /// <summary>Handle unknown @commands here (cmd.Name = command name, cmd.Params = parameters).</summary>
+        // Обработка неизвестных @commands здесь (cmd.Name = имя команды, cmd.Params = параметры)
         public event Action<VNCommand> CustomCommand;
-        /// <summary>Fired when a script reaches its end or an @end command runs.</summary>
+        // Срабатывает, когда скрипт завершается или выполняется команда @end
         public event Action ScriptEnded;
 
         Canvas canvas;
@@ -129,7 +129,7 @@ namespace VNKit
 
         void Start()
         {
-            // Hide everything until Addressables is ready.
+            // Скрыть всё, пока Addressables не будет готов.
             Dialogue.Hide();
             QuickMenu.SetVisible(false);
             Title.Hide();
@@ -140,11 +140,11 @@ namespace VNKit
 
         IEnumerator BootRoutine()
         {
-            // 1) Initialize Addressables (catalogs, providers). Required for remote groups / WebGL.
+            // 1) Инициализация адресуемых объектов (каталоги, поставщики). Требуется для удаленных групп / WebGL.
             if (showLoadingScreen) Loading.SetProgress(0.05f, "Initializing Addressables…");
             yield return VNResources.Initialize();
 
-            // 2) Optional preload of addresses listed on the engine component.
+            // 2) Дополнительная предварительная загрузка адресов, указанных в компоненте движка.
             if (preloadAddresses != null && preloadAddresses.Count > 0)
             {
                 if (showLoadingScreen) Loading.SetProgress(0.15f, "Preloading assets…");
@@ -156,7 +156,7 @@ namespace VNKit
             }
             else
             {
-                // Short artificial step so the bar is visible even with no preload list.
+                // Небольшой искусственный шаг, чтобы панель была видна даже без списка предварительной загрузки.
                 if (showLoadingScreen)
                 {
                     Loading.SetProgress(0.6f, "Ready");
@@ -171,7 +171,7 @@ namespace VNKit
                 Loading.Hide();
             }
 
-            // 3) Enter game or title screen.
+            // 3) Переход на экран игры или титульный экран.
             if (showTitleScreen)
             {
                 Dialogue.Hide();
@@ -209,8 +209,8 @@ namespace VNKit
             }
 
             bool modal = IsModalOpen();
-            // While any modal (Settings / Save / Load / Backlog) or Title is open,
-            // freeze advance, auto-play and skip so text does not keep running.
+            // Пока открыто любое модальное окно (Настройки / Сохранить / Загрузить / Список дел) или заголовок,
+            // заморозьте переход, автовоспроизведение и пропуск, чтобы текст не продолжал отображаться.
             if (modal || Title.IsOpen)
             {
                 Player.SetSkipHeld(false);
@@ -348,7 +348,7 @@ namespace VNKit
             if (onDone != null) onDone(s);
         }
 
-        /// <summary>Async character sprite load.</summary>
+        // Асинхронная загрузка спрайта персонажа
         public System.Collections.IEnumerator LoadCharacterSpriteAsync(string name, string appearance, System.Action<Sprite> onDone)
         {
             Sprite s = null;
@@ -413,7 +413,7 @@ namespace VNKit
             Dialogue.Hide();
             QuickMenu.SetVisible(false);
 
-            // Addressables loads are async — restore via coroutine (with optional loading screen).
+            // Загрузка адресных объектов происходит асинхронно — восстановление осуществляется через сопрограмму (с дополнительным экраном загрузки).
             StartCoroutine(LoadGameRoutine(data));
             return true;
         }
@@ -557,7 +557,7 @@ namespace VNKit
                 var w = JsonUtility.FromJson<StringList>(PlayerPrefs.GetString(SeenKey));
                 if (w != null && w.items != null) foreach (var s in w.items) seenLines.Add(s);
             }
-            catch (Exception) { /* corrupted seen data is non-fatal */ }
+            catch (Exception) { /* Поврежденные данные не являются фатальными */}
         }
 
         void SaveSeen()
@@ -573,7 +573,7 @@ namespace VNKit
         {
             if (!PlayerPrefs.HasKey(SettingsKey)) return;
             try { JsonUtility.FromJsonOverwrite(PlayerPrefs.GetString(SettingsKey), Settings); }
-            catch (Exception) { /* keep defaults */ }
+            catch (Exception) { /* сохранить значения по умолчанию */ }
         }
 
         public void ApplySettings()

@@ -4,10 +4,10 @@ using System.Text;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Global variable store. Values are dynamically typed (number / text / bool).
-    /// Undefined variables read as 0, which also means "false".
-    /// </summary>
+    /*
+    Глобальное хранилище переменных. Значения имеют динамический тип (число / текст / логическое значение).
+    Неопределенные переменные считываются как 0, что также означает «false».
+    */
     public class VNVariables
     {
         readonly Dictionary<string, VNValue> map = new Dictionary<string, VNValue>();
@@ -43,7 +43,7 @@ namespace VNKit
             return VNExpression.Evaluate(conditionExpression, Get).ToBool();
         }
 
-        /// <summary>Applies a comma-separated list such as "gold=100, affection+=2, name=\"Hana\"".</summary>
+        // Применяет список, разделенный запятыми, например, "gold=100, affection+=2, name=\"Hana\""
         public void Apply(string assignments)
         {
             if (string.IsNullOrEmpty(assignments)) return;

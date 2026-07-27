@@ -3,11 +3,11 @@ using System.Text;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Reveals rich-text progressively for the typewriter effect.
-    /// Tags are never split mid-way and are auto-closed at every step,
-    /// so uGUI always receives well-formed markup.
-    /// </summary>
+    /*
+    Постепенно отображает форматированный текст для создания эффекта пишущей машинки.
+    Теги никогда не разделяются посередине и автоматически закрываются на каждом шаге,
+    поэтому uGUI всегда получает корректную разметку.
+    */
     public class RichTextReveal
     {
         public int Total { get; private set; }

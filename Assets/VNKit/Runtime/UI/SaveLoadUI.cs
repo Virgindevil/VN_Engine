@@ -4,7 +4,7 @@ using TMPro;
 
 namespace VNKit
 {
-    /// <summary>Save / load slot grid with thumbnails, timestamps and line previews.</summary>
+    // Сохранение/загрузка сетки игровых автоматов с миниатюрами, временными метками и предварительным просмотром линий
     public class SaveLoadUI
     {
         public enum Mode { Save, Load }
@@ -30,7 +30,7 @@ namespace VNKit
                 new Vector2(0.10f, 0.07f), new Vector2(0.90f, 0.93f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
 
-            // Window() created the header text named "Title"
+            // Функция Window() создала заголовок с именем "Title"
             titleText = win.Find("Header/Title").GetComponent<TextMeshProUGUI>();
 
             grid = UIFactory.Rect("Grid", win);

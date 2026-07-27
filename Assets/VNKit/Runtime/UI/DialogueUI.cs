@@ -6,7 +6,7 @@ using TMPro;
 
 namespace VNKit
 {
-    /// <summary>Bottom dialogue panel: name plate, typewriter text, blinking continue marker.</summary>
+    // Нижняя панель диалога: табличка с именем, текст, набранный на пишущей машинке, мигающий маркер продолжения
     public class DialogueUI
     {
         public bool IsTyping { get; private set; }
@@ -30,7 +30,7 @@ namespace VNKit
             runner = VNRunner.Create("VNKit.Dialogue", parent);
             root = runner.gameObject;
 
-            // Bottom panel (clickable to advance)
+            // Нижняя панель (кликабельна)
             var panel = UIFactory.Rect("Panel", root.transform);
             UIFactory.Anchor(panel, new Vector2(0f, 0f), new Vector2(1f, 0.27f));
             var panelImg = UIFactory.AddImage(panel.gameObject, engine.dialoguePanelColor);
@@ -39,7 +39,7 @@ namespace VNKit
             advance.transition = Selectable.Transition.None;
             advance.onClick.AddListener(delegate { if (engine.Player != null) engine.Player.Advance(); });
 
-            // Message text
+            // Текст сообщения
             messageText = UIFactory.Text(panel, "Message", "", 30, TextAnchor.UpperLeft, Color.white);
             var mrt = (RectTransform)messageText.transform;
             mrt.anchorMin = new Vector2(0.03f, 0.10f);
@@ -49,7 +49,7 @@ namespace VNKit
             messageText.lineSpacing = 1.2f;
             UIFactory.AddOutline(messageText, new Color(0f, 0f, 0f, 0.85f), 1.5f);
 
-            // Name plate
+            // Табличка с именем
             namePlate = UIFactory.Rect("NamePlate", root.transform).gameObject;
             var nprt = (RectTransform)namePlate.transform;
             UIFactory.Anchor(nprt, new Vector2(0.015f, 0.272f), new Vector2(0.30f, 0.35f));
@@ -61,7 +61,7 @@ namespace VNKit
             nameText.fontStyle = FontStyles.Bold;
             UIFactory.AddOutline(nameText, new Color(0f, 0f, 0f, 0.6f), 1f);
 
-            // Continue indicator
+            // Индикатор "продолжить"
             continueIcon = UIFactory.Text(panel, "Continue", "»", 30, TextAnchor.MiddleRight, engine.accentColor);
             var crt = (RectTransform)continueIcon.transform;
             crt.anchorMin = new Vector2(0.95f, 0.02f);

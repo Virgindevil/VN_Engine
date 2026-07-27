@@ -4,10 +4,10 @@ using TMPro;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Simple full-screen loading / preloader overlay.
-    /// Used at boot while Addressables initializes and optional assets preload.
-    /// </summary>
+    /*
+    Простая полноэкранная загрузка/предзагрузка.
+    Используется при загрузке системы во время инициализации Addressables и предварительной загрузки дополнительных ресурсов.
+    */
     public class LoadingUI
     {
         public bool IsOpen { get { return root != null && root.activeSelf; } }
@@ -99,7 +99,7 @@ namespace VNKit
             root.SetActive(false);
         }
 
-        /// <summary>progress 0..1. Optional status message and percent display.</summary>
+        // прогресс от 0..1 Дополнительное сообщение о состоянии и отображение процента.
         public void SetProgress(float progress, string status = null)
         {
             progress = Mathf.Clamp01(progress);

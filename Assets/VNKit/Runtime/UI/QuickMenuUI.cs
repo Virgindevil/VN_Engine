@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    /// <summary>Small button row above the dialogue panel: Backlog / Save / Load / Auto / Skip / Settings / Title.</summary>
+    // Небольшой ряд кнопок над панелью диалога: История / Сохранить / Загрузить / Авто / Пропустить / Настройки / Меню
     public class QuickMenuUI
     {
         readonly GameObject root;

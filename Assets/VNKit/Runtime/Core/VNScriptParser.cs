@@ -4,27 +4,29 @@ using System.Text;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Parses .vns text into a VNScript.
-    ///
-    /// Syntax overview:
-    ///   ; comment
-    ///   # LabelName
-    ///   @bg Campus time:0.8
-    ///   @char Hana.Happy pos:left time:0.4
-    ///   @hide Hana  |  @hideChars
-    ///   @bgm Theme fade:1.5   |   @stopBgm fade:1
-    ///   @sfx Chime vol:0.8    |   @voice hana_01  |  @stopVoice
-    ///   Hana: Hello there![br]Second line.
-    ///   Hana.Smile: Changes appearance, then speaks.
-    ///   Narration line without a speaker prefix.
-    ///   @choice "Option A" goto:LabelA if:score>0 do:score+=1 | "Option B" goto:LabelB
-    ///   @goto Label   |   @goto OtherScript.Label
-    ///   @set gold=100, affection+=2, name="Hana"
-    ///   @if affection>0 goto:GoodEnd else:NormalEnd
-    ///   @wait 1.5
-    ///   @end
-    /// </summary>
+    /*
+    Преобразует текст с расширением .vns в VNScript.
+    Обзор синтаксиса:
+      ; comment
+      # Label
+        @bg Campus time:0.8              сменить фон с плавным переходом
+        @char Hana.Happy pos:left        показать/переместить персонажа
+        @char Hana hide                  скрыть персонажа
+        @hideChars time:0.5              скрыть всех персонажей
+        @bgm Theme fade:1.5              включить музыку
+        @stopBgm fade:1                  остановить музыку
+        @sfx Chime vol:0.8               воспроизвести звуковой эффект
+        @voice hana_01                   воспроизвести голосовую реплику
+        Hana: Dialogue line.             имя говорящего + текст
+        Hana.Happy: Changes + speaks.    сменить внешний вид и произнести реплику
+        Обычная строка повествования.
+        @choice "A" goto:La do:x+=1 | "B" goto:Lb if:x>0
+        @goto Label / @goto Script.Label
+        @set gold=100, affection+=2
+        @if affection>0 goto:Good else:Bad
+        @wait 1.5
+        @end
+    */
     public static class VNScriptParser
     {
         public static VNScript Parse(string scriptName, string text)
@@ -65,8 +67,8 @@ namespace VNKit
             if (colon > 0)
             {
                 string head = line.Substring(0, colon);
-                // Treat as speaker only when the head is a single "word" (letters/digits/_/.),
-                // so narration like "Note: ..." with spaces is not misread.
+                    // Рассматривать как говорящего только тогда, когда заголовок представляет собой одно «слово» (буквы/цифры/_/.),
+                    // чтобы фраза типа "Запись: ..." с пробелами не было неправильно истолковано.
                 if (IsSpeakerToken(head))
                 {
                     cmd.Speaker = head;
@@ -150,7 +152,7 @@ namespace VNKit
             return cmd;
         }
 
-        /// <summary>First bare token -> Name, second -> Pos; key:value pairs -> Params; "hide" flag supported.</summary>
+        // Первый пустой токен -> Name, second -> Pos; key:значение -> Params; "hide" если поддерживается
         static void FillPositional(VNCommand cmd, List<string> tokens)
         {
             var positional = new List<string>();
@@ -219,7 +221,7 @@ namespace VNKit
             return true;
         }
 
-        /// <summary>Splits on whitespace; double-quoted sections stay together (quotes removed).</summary>
+        // Разделение по пробелам; разделы в двойных кавычках остаются вместе
         static List<string> SplitTokens(string s)
         {
             var list = new List<string>();

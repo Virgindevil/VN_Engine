@@ -19,7 +19,7 @@ namespace VNKit.EditorTools
         [MenuItem("Tools/VNKit/Create Content Folders")]
         public static void CreateFolders()
         {
-            // Content lives outside Resources — mark these as Addressable in the Addressables Groups window.
+            // Содержимое находится вне ресурсов — надо отметить их как Addressable в Addressables Groups
             string[] paths =
             {
                 "Assets/VNContent/Backgrounds",

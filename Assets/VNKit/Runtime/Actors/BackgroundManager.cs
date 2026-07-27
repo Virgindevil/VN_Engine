@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    /// <summary>Two crossfading background layers over a black base. Images are "cover"-fitted to 1920x1080.</summary>
+    /// <summary>Два плавно переходящих фоновых слоя на чёрной основе. Изображения подогнаны под разрешение 1920x1080</summary>
     public class BackgroundManager
     {
         public string CurrentName { get; private set; }
@@ -74,7 +74,7 @@ namespace VNKit
             fade = runner.StartCoroutine(FadeBoth(time));
         }
 
-        /// <summary>Instant restore from a save file. Pass the already-loaded sprite.</summary>
+        /// <summary>Мгновенное восстановление из файла сохранения, передаёт уже загруженный спрайт</summary>
         public void Restore(string name, Sprite sprite)
         {
             StopFade();

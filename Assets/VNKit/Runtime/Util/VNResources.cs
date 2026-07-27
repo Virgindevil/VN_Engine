@@ -7,19 +7,19 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace VNKit
 {
-    /// <summary>
-    /// Addressables-based asset loading with an in-memory cache.
-    ///
-    /// Address convention (set these as the Addressable "Address" of each asset):
-    ///   VN/Backgrounds/Campus
-    ///   VN/Characters/Ayame/Smile
-    ///   VN/Audio/BGM/ThemeDay
-    ///   VN/Audio/SFX/Chime
-    ///   VN/Audio/Voice/hana_01
-    ///
-    /// Content lives in Assets/VNContent/... (Tools → VNKit → Create Content Folders).
-    /// Mark assets Addressable in Window → Asset Management → Addressables → Groups.
-    /// </summary>
+    /*
+    Загрузка ресурсов на основе адресных объектов с использованием кэша в оперативной памяти.
+    Соглашение об адресации (установите эти адреса в качестве адресных "адресов" каждого ресурса):
+
+    VN/Backgrounds/Campus
+    VN/Characters/Ayame/Smile
+    VN/Audio/BGM/ThemeDay
+    VN/Audio/SFX/Chime
+    VN/Audio/Voice/hana_01
+
+    Контент находится в Assets/VNContent/... (Инструменты → VNKit → Создать папки контента).
+    Отметьте ресурсы как адресные в Window → Asset Management → Addressables → Groups.
+    */
     public static class VNResources
     {
         static readonly Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
@@ -29,14 +29,14 @@ namespace VNKit
         static bool initialized;
 
         // ------------------------------------------------------------------
-        // Initialization (call once at boot)
+        // Initialization
         // ------------------------------------------------------------------
 
-        /// <summary>
-        /// Initializes the Addressables system (catalog, local/remote providers).
-        /// Safe to call multiple times; subsequent calls are no-ops.
-        /// Does not throw if Addressables is not fully configured yet.
-        /// </summary>
+        /*
+        Инициализирует систему Addressables (каталог, локальные/удалённые провайдеры).
+        Можно безопасно вызывать несколько раз; последующие вызовы ничего не делают.
+        Не генерирует исключение, если Addressables ещё не полностью настроена.
+        */
         public static IEnumerator Initialize(Action onDone = null)
         {
             if (initialized)
@@ -61,18 +61,17 @@ namespace VNKit
 
             if (started)
             {
-                // yield must be outside try/catch
                 yield return handle;
 
                 if (handle.IsValid() && handle.Status == AsyncOperationStatus.Succeeded)
                     initialized = true;
                 else if (!handle.IsValid())
-                    initialized = true; // already init / auto-init
+                    initialized = true; 
                 else
                     VNLog.Warn("Addressables.InitializeAsync finished with status: " + handle.Status);
             }
 
-            // Even if init failed, mark true so boot continues (loads will just return null).
+            // Даже если инициализация не удалась, пометьте значение true, чтобы загрузка продолжилась (при загрузке будет возвращено значение null)
             if (!initialized)
             {
                 VNLog.Warn("Addressables not fully ready. Content loads may fail until assets are marked Addressable.");
@@ -85,7 +84,7 @@ namespace VNKit
         public static bool IsInitialized { get { return initialized; } }
 
         // ------------------------------------------------------------------
-        // Cache lookups (instant, no I/O)
+        // Cache find
         // ------------------------------------------------------------------
 
         public static Sprite GetCachedSprite(string address)
@@ -101,14 +100,14 @@ namespace VNKit
         }
 
         // ------------------------------------------------------------------
-        // Async loaders (yield in coroutines)
+        // Async loaders (пока что на корутинах)
         // ------------------------------------------------------------------
 
-        /// <summary>
-        /// Loads a Sprite by Addressables key.
-        /// Also accepts a Texture2D address and wraps it into a Sprite.
-        /// Calls onDone(null) when the asset is missing.
-        /// </summary>
+        /*
+        Загружает спрайт по ключу Addressables.
+        Также принимает адрес Texture2D и оборачивает его в спрайт.
+        Вызывает onDone(null), если ресурс отсутствует.
+        */
         public static IEnumerator LoadSprite(string address, Action<Sprite> onDone)
         {
             if (string.IsNullOrEmpty(address))
@@ -124,7 +123,7 @@ namespace VNKit
                 yield break;
             }
 
-            // 1) Try as Sprite
+            // 1) Sprite
             var handle = Addressables.LoadAssetAsync<Sprite>(address);
             yield return handle;
 
@@ -138,7 +137,7 @@ namespace VNKit
 
             if (handle.IsValid()) Addressables.Release(handle);
 
-            // 2) Try as Texture2D → create Sprite
+            // 2) Texture2D → Sprite
             var texHandle = Addressables.LoadAssetAsync<Texture2D>(address);
             yield return texHandle;
 
@@ -162,7 +161,7 @@ namespace VNKit
             if (onDone != null) onDone(null);
         }
 
-        /// <summary>Loads an AudioClip by Addressables key.</summary>
+        // Загружает AudioClip по Addressables key
         public static IEnumerator LoadClip(string address, Action<AudioClip> onDone)
         {
             if (string.IsNullOrEmpty(address))
@@ -195,7 +194,7 @@ namespace VNKit
         }
 
         // ------------------------------------------------------------------
-        // Preload helpers (for boot / chapter starts)
+        // Preload helpers
         // ------------------------------------------------------------------
 
         public static IEnumerator PreloadSprites(IList<string> addresses, Action<float, string> onProgress = null)
