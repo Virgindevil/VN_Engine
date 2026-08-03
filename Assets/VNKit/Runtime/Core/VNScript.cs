@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace VNKit
 {
-    // Полностью проанализированный скрипт .vns: упорядоченные команды + таблица меток
+    /// <summary>A fully parsed .vns script: ordered commands + label table.</summary>
     public class VNScript
     {
         public string Name;
@@ -14,7 +14,7 @@ namespace VNKit
             Name = name;
         }
 
-        // Возвращает индекс команды, на которую указывает метка, или -1
+        /// <summary>Returns the command index the label points to, or -1.</summary>
         public int FindLabel(string label)
         {
             int idx;

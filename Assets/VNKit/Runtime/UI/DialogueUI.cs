@@ -6,7 +6,7 @@ using TMPro;
 
 namespace VNKit
 {
-    // Нижняя панель диалога: табличка с именем, текст, набранный на пишущей машинке, мигающий маркер продолжения
+    /// <summary>Bottom dialogue panel: name plate, typewriter text, blinking continue marker.</summary>
     public class DialogueUI
     {
         public bool IsTyping { get; private set; }
@@ -30,39 +30,44 @@ namespace VNKit
             runner = VNRunner.Create("VNKit.Dialogue", parent);
             root = runner.gameObject;
 
-            // Нижняя панель (кликабельна)
+            var theme = UIFactory.Theme;
+            int msgSize = theme != null ? theme.messageFontSize : 30;
+            int nameSize = theme != null ? theme.nameFontSize : 30;
+            Color panelColor = theme != null ? theme.dialoguePanelColor : engine.dialoguePanelColor;
+
+            // Bottom panel (clickable to advance)
             var panel = UIFactory.Rect("Panel", root.transform);
             UIFactory.Anchor(panel, new Vector2(0f, 0f), new Vector2(1f, 0.27f));
-            var panelImg = UIFactory.AddImage(panel.gameObject, engine.dialoguePanelColor);
+            var panelImg = UIFactory.AddImage(panel.gameObject, panelColor);
             panelImg.raycastTarget = true;
             var advance = panel.gameObject.AddComponent<Button>();
             advance.transition = Selectable.Transition.None;
             advance.onClick.AddListener(delegate { if (engine.Player != null) engine.Player.Advance(); });
 
-            // Текст сообщения
-            messageText = UIFactory.Text(panel, "Message", "", 30, TextAnchor.UpperLeft, Color.white);
+            // Message text
+            messageText = UIFactory.Text(panel, "Message", "", msgSize, TextAnchor.UpperLeft, UIFactory.TextColor);
             var mrt = (RectTransform)messageText.transform;
             mrt.anchorMin = new Vector2(0.03f, 0.10f);
             mrt.anchorMax = new Vector2(0.97f, 0.92f);
             mrt.offsetMin = Vector2.zero;
             mrt.offsetMax = Vector2.zero;
-            messageText.lineSpacing = 1.2f;
+            messageText.lineSpacing = 10f;
             UIFactory.AddOutline(messageText, new Color(0f, 0f, 0f, 0.85f), 1.5f);
 
-            // Табличка с именем
+            // Name plate
             namePlate = UIFactory.Rect("NamePlate", root.transform).gameObject;
             var nprt = (RectTransform)namePlate.transform;
             UIFactory.Anchor(nprt, new Vector2(0.015f, 0.272f), new Vector2(0.30f, 0.35f));
             var plateImg = UIFactory.AddImage(namePlate, engine.accentColor);
             plateImg.sprite = UIFactory.UISprite;
-            plateImg.type = Image.Type.Sliced;
-            nameText = UIFactory.Text(namePlate.transform, "Name", "", 30, TextAnchor.MiddleCenter, Color.white);
+            plateImg.type = UnityEngine.UI.Image.Type.Sliced;
+            nameText = UIFactory.Text(namePlate.transform, "Name", "", nameSize, TextAnchor.MiddleCenter, UIFactory.TextColor);
             UIFactory.Stretch((RectTransform)nameText.transform);
             nameText.fontStyle = FontStyles.Bold;
             UIFactory.AddOutline(nameText, new Color(0f, 0f, 0f, 0.6f), 1f);
 
-            // Индикатор "продолжить"
-            continueIcon = UIFactory.Text(panel, "Continue", "»", 30, TextAnchor.MiddleRight, engine.accentColor);
+            // Continue indicator
+            continueIcon = UIFactory.Text(panel, "Continue", "»", msgSize, TextAnchor.MiddleRight, engine.accentColor);
             var crt = (RectTransform)continueIcon.transform;
             crt.anchorMin = new Vector2(0.95f, 0.02f);
             crt.anchorMax = new Vector2(0.99f, 0.18f);

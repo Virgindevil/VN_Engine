@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    // Небольшой ряд кнопок над панелью диалога: История / Сохранить / Загрузить / Авто / Пропустить / Настройки / Меню
+    /// <summary>Small button row above the dialogue panel: Backlog / Save / Load / Auto / Skip / CG / Settings / Title.</summary>
     public class QuickMenuUI
     {
         readonly GameObject root;
@@ -15,12 +15,14 @@ namespace VNKit
         public QuickMenuUI(Transform parent, VisualNovelEngine engine)
         {
             this.engine = engine;
+            float btnW = UIFactory.Theme != null ? UIFactory.Theme.quickMenuButtonWidth : 112f;
+
             root = UIFactory.Rect("VNKit.QuickMenu", parent).gameObject;
             var rt = (RectTransform)root.transform;
             rt.anchorMin = new Vector2(1f, 0.272f);
             rt.anchorMax = new Vector2(1f, 0.33f);
             rt.pivot = new Vector2(1f, 0f);
-            rt.offsetMin = new Vector2(-830f, 0f);
+            rt.offsetMin = new Vector2(-(btnW * 8 + 7 * 8 + 8), 0f);
             rt.offsetMax = new Vector2(-8f, 0f);
 
             var hlg = root.AddComponent<HorizontalLayoutGroup>();
@@ -31,21 +33,22 @@ namespace VNKit
             hlg.childForceExpandHeight = true;
             hlg.spacing = 8f;
 
-            AddButton("Backlog", engine.OpenBacklog);
-            AddButton("Save", engine.OpenSavePanel);
-            AddButton("Load", engine.OpenLoadPanel);
-            autoBtn = AddButton("Auto", engine.ToggleAuto);
-            skipBtn = AddButton("Skip", engine.ToggleSkip);
-            AddButton("Settings", engine.OpenSettings);
-            AddButton("Title", engine.ReturnToTitle);
+            AddButton("backlog", VNLoc.T("qm.backlog"), engine.OpenBacklog, btnW);
+            AddButton("save", VNLoc.T("qm.save"), engine.OpenSavePanel, btnW);
+            AddButton("load", VNLoc.T("qm.load"), engine.OpenLoadPanel, btnW);
+            autoBtn = AddButton("auto", VNLoc.T("qm.auto"), engine.ToggleAuto, btnW);
+            skipBtn = AddButton("skip", VNLoc.T("qm.skip"), engine.ToggleSkip, btnW);
+            AddButton("cg", VNLoc.T("qm.gallery"), engine.OpenGallery, btnW);
+            AddButton("settings", VNLoc.T("qm.settings"), engine.OpenSettings, btnW);
+            AddButton("title", VNLoc.T("qm.title"), engine.ReturnToTitle, btnW);
 
             root.SetActive(false);
         }
 
-        Button AddButton(string label, UnityAction action)
+        Button AddButton(string name, string label, UnityAction action, float width)
         {
-            var b = UIFactory.Button(root.transform, label, label, 20, action);
-            UIFactory.Layout(b.gameObject, 112f, 0f);
+            var b = UIFactory.Button(root.transform, name, label, 20, action);
+            UIFactory.Layout(b.gameObject, width, 0f);
             return b;
         }
 

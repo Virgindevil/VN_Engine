@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    //Центрированный набор кнопок выбора
+    /// <summary>Centered stack of choice buttons.</summary>
     public class ChoiceUI
     {
         public bool IsOpen { get { return root.activeSelf; } }

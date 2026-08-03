@@ -1,10 +1,13 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 namespace VNKit
 {
-    // Простой титульный экран: название игры, Новая игра / Загрузка / Настройки / Выход
+    /// <summary>
+    /// Title screen: background, game name, menu buttons.
+    /// Button column position, button size/spacing, fonts and colors come from the
+    /// active VNUITheme (engine.uiTheme) — rearrange the main menu without code.
+    /// </summary>
     public class TitleUI
     {
         public bool IsOpen { get { return root.activeSelf; } }
@@ -13,6 +16,8 @@ namespace VNKit
 
         public TitleUI(Transform parent, VisualNovelEngine engine)
         {
+            var theme = UIFactory.Theme;
+
             root = UIFactory.Rect("VNKit.Title", parent).gameObject;
             UIFactory.Stretch((RectTransform)root.transform);
 
@@ -32,20 +37,33 @@ namespace VNKit
             }
 
             // Title text
-            var title = UIFactory.Text(root.transform, "Title", engine.gameTitle, 76,
-                TextAnchor.MiddleCenter, Color.black);
+            var title = UIFactory.Text(root.transform, "Title", engine.gameTitle,
+                theme != null ? theme.titleFontSize : 76, TextAnchor.MiddleCenter, UIFactory.TextColor);
             var trt = (RectTransform)title.transform;
             trt.anchorMin = new Vector2(0.15f, 0.58f);
             trt.anchorMax = new Vector2(0.85f, 0.80f);
             trt.offsetMin = Vector2.zero;
             trt.offsetMax = Vector2.zero;
-            title.fontStyle = FontStyles.Bold;
-            UIFactory.AddOutline(title, new Color(1f, 1f, 1f, 0.8f), 2f);
+            title.fontStyle = TMPro.FontStyles.Bold;
+            UIFactory.AddOutline(title, new Color(0f, 0f, 0f, 0.8f), 2f);
 
-            // Buttons
+            // Logo (optional, above the title text)
+            if (engine.titleLogo != null)
+            {
+                var logoRT = UIFactory.Rect("Logo", root.transform);
+                logoRT.anchorMin = new Vector2(0.35f, 0.62f);
+                logoRT.anchorMax = new Vector2(0.65f, 0.90f);
+                logoRT.offsetMin = Vector2.zero;
+                logoRT.offsetMax = Vector2.zero;
+                var logoImg = UIFactory.AddImage(logoRT.gameObject, Color.white);
+                logoImg.sprite = engine.titleLogo;
+                logoImg.preserveAspect = true;
+            }
+
+            // Buttons (theme-driven layout)
             var column = UIFactory.Rect("Buttons", root.transform);
-            column.anchorMin = new Vector2(0.38f, 0.16f);
-            column.anchorMax = new Vector2(0.62f, 0.54f);
+            column.anchorMin = theme != null ? theme.titleMenuAnchorMin : new Vector2(0.38f, 0.16f);
+            column.anchorMax = theme != null ? theme.titleMenuAnchorMax : new Vector2(0.62f, 0.54f);
             column.offsetMin = Vector2.zero;
             column.offsetMax = Vector2.zero;
             var vlg = column.gameObject.AddComponent<VerticalLayoutGroup>();
@@ -54,29 +72,37 @@ namespace VNKit
             vlg.childControlHeight = true;
             vlg.childForceExpandWidth = true;
             vlg.childForceExpandHeight = false;
-            vlg.spacing = 16f;
+            vlg.spacing = theme != null ? theme.titleButtonSpacing : 16f;
 
-            AddMenuButton(column, "New Game", engine.StartNewGame);
-            AddMenuButton(column, "Load", engine.OpenLoadPanel);
-            AddMenuButton(column, "Settings", engine.OpenSettings);
-            AddMenuButton(column, "Quit", engine.QuitGame);
+            float btnH = theme != null ? theme.titleButtonHeight : 66f;
+            int btnFont = theme != null ? theme.titleButtonFontSize : 28;
+
+            AddMenuButton(column, VNLoc.T("title.newgame"), btnH, btnFont, engine.StartNewGame);
+            AddMenuButton(column, VNLoc.T("title.load"), btnH, btnFont, engine.OpenLoadPanel);
+            AddMenuButton(column, VNLoc.T("title.gallery"), btnH, btnFont, engine.OpenGallery);
+            AddMenuButton(column, VNLoc.T("title.settings"), btnH, btnFont, engine.OpenSettings);
+            AddMenuButton(column, VNLoc.T("title.quit"), btnH, btnFont, engine.QuitGame);
 
             // Footer
-            var footer = UIFactory.Text(root.transform, "Footer", "Powered by VNKit", 18,
-                TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.35f));
-            var frt = (RectTransform)footer.transform;
-            frt.anchorMin = new Vector2(0.4f, 0.02f);
-            frt.anchorMax = new Vector2(0.6f, 0.06f);
-            frt.offsetMin = Vector2.zero;
-            frt.offsetMax = Vector2.zero;
+            if (theme == null || theme.showTitleFooter)
+            {
+                var footer = UIFactory.Text(root.transform, "Footer", VNLoc.T("title.footer"), 18,
+                    TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.35f));
+                var frt = (RectTransform)footer.transform;
+                frt.anchorMin = new Vector2(0.4f, 0.02f);
+                frt.anchorMax = new Vector2(0.6f, 0.06f);
+                frt.offsetMin = Vector2.zero;
+                frt.offsetMax = Vector2.zero;
+            }
 
             root.SetActive(false);
         }
 
-        void AddMenuButton(RectTransform column, string label, UnityEngine.Events.UnityAction action)
+        void AddMenuButton(RectTransform column, string label, float height, int fontSize,
+            UnityEngine.Events.UnityAction action)
         {
-            var btn = UIFactory.Button(column, label, label, 28, action);
-            UIFactory.Layout(btn.gameObject, 0f, 66f);
+            var btn = UIFactory.Button(column, label, label, fontSize, action);
+            UIFactory.Layout(btn.gameObject, 0f, height);
         }
 
         public void Show()

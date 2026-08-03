@@ -166,23 +166,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075103fae8a46c69fce87e6efd9e022, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startScript: {fileID: 9027929339269108002, guid: d8f69279b32749248b24cda0554b1023, type: 3}
+  startScript: {fileID: 9027929339269108002, guid: 8d5f71ee88594f4fbb35217571265029, type: 3}
   additionalScripts:
   - {fileID: 9027929339269108002, guid: 662af4f1d1a344f280d0cc7adf0730bd, type: 3}
   resourcesRoot: VN
   showTitleScreen: 1
-  gameTitle: Novel Test
+  gameTitle: 
   titleBackground: {fileID: 21300000, guid: 2d4e53b0c65d4514c92990d9fed4c3bc, type: 3}
   titleLogo: {fileID: 21300000, guid: 7f484c07f98c78045af4b5dc4ed34b85, type: 3}
-  usePlaceholderGraphics: 0
+  uiTheme: {fileID: 11400000, guid: 6f51968ee4f41b043b3ef8fe1793fc15, type: 2}
+  usePlaceholderGraphics: 1
   dialoguePanelColor: {r: 0, g: 0, b: 0, a: 0.72}
-  accentColor: {r: 1, g: 0, b: 0.056250572, a: 1}
+  accentColor: {r: 0.85, g: 0.45, b: 0.65, a: 1}
   showLoadingScreen: 1
   preloadAddresses:
   - VN/Backgrounds/Campus
   - VN/Characters/Ayame/Default
-  - VN/Characters/Ayame/Smile
+  - VN/Audio/BGM/ThemeDay
+  - VN/Audio/BGM/ThemeSunset
+  spineCharacters: []
+  spineCgs: []
+  galleryCgs:
+  - RooftopSunset
   saveSeenText: 1
+  enableRollback: 1
   Settings:
     masterVolume: 1
     bgmVolume: 0.8
@@ -191,11 +198,14 @@ MonoBehaviour:
     textSpeed: 45
     autoDelay: 1.2
     skipUnreadOnly: 1
-    language: ru
+    language: en
     resolutionWidth: 1920
     resolutionHeight: 1080
     fullscreen: 1
---- !u!1 &1004788606
+    skipKey: 306
+    autoKey: 97
+    rollbackKey: 280
+--- !u!1 &1795100551
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -203,9 +213,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1004788609}
-  - component: {fileID: 1004788608}
-  - component: {fileID: 1004788607}
+  - component: {fileID: 1795100554}
+  - component: {fileID: 1795100553}
+  - component: {fileID: 1795100552}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -213,24 +223,24 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1004788607
+--- !u!81 &1795100552
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1004788606}
+  m_GameObject: {fileID: 1795100551}
   m_Enabled: 1
---- !u!20 &1004788608
+--- !u!20 &1795100553
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1004788606}
+  m_GameObject: {fileID: 1795100551}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
+  m_ClearFlags: 2
   m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -272,16 +282,16 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1004788609
+--- !u!4 &1795100554
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1004788606}
+  m_GameObject: {fileID: 1795100551}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 465.88788, y: 189.05042, z: -1.6483731}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -292,4 +302,4 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 100001}
-  - {fileID: 1004788609}
+  - {fileID: 1795100554}

@@ -4,17 +4,17 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /*
-    Выполняет разобранную команду VNScript пошагово.
-    Управляет конечным автоматом воспроизведения, автоматическим режимом и режимом пропуска.
-    */
+    /// <summary>
+    /// Executes a parsed VNScript command by command.
+    /// Owns the playback state machine, auto mode, skip mode and async asset waits.
+    /// </summary>
     public class ScriptPlayer
     {
         readonly VisualNovelEngine engine;
         readonly VNRunner runner;
 
         VNScript script;
-        int index;                      
+        int index;
         bool finishWait;
         bool skipHeld;
         float skipTimer;
@@ -56,7 +56,7 @@ namespace VNKit
 
         public void SetSkipHeld(bool held) { skipHeld = held; }
 
-        // Игрок нажал кнопку "Перемотать вперед" (клик мыши / пробел / Enter)
+        /// <summary>The player pressed "advance" (click / Space / Enter).</summary>
         public void Advance()
         {
             if (IsTyping) { engine.Dialogue.CompleteLine(); return; }
@@ -81,13 +81,14 @@ namespace VNKit
             bool skipping = (SkipMode || skipHeld)
                             && State != PlayerState.WaitingChoice
                             && State != PlayerState.WaitingAsset
+                            && State != PlayerState.WaitingMinigame
                             && State != PlayerState.Idle
                             && State != PlayerState.Ended;
 
             if (skipping)
             {
-                // Когда параметр skipUnreadOnly включен, переключение режима пропуска останавливает чтение на непрочитанном тексте.
-                // Удерживание клавиши Ctrl (skipHeld) всегда пропускает все.
+                // When skipUnreadOnly is on, toggle-skip stops at unread text.
+                // Holding the skip key always skips everything.
                 bool stopAtUnread = engine.Settings.skipUnreadOnly
                                     && SkipMode && !skipHeld
                                     && !CurrentLineSeen
@@ -112,7 +113,6 @@ namespace VNKit
             }
             else autoTimer = 0f;
         }
-        
 
         void Step()
         {
@@ -137,6 +137,15 @@ namespace VNKit
                     case VNCommandType.Background:
                         State = PlayerState.WaitingAsset;
                         runner.StartCoroutine(CoBackground(cmd));
+                        return;
+
+                    case VNCommandType.Cg:
+                        State = PlayerState.WaitingAsset;
+                        runner.StartCoroutine(CoCg(cmd));
+                        return;
+
+                    case VNCommandType.Minigame:
+                        DoMinigame(cmd);
                         return;
 
                     case VNCommandType.Bgm:
@@ -177,7 +186,10 @@ namespace VNKit
 
         void DoSay(VNCommand cmd)
         {
-            // Appearance change may need an Addressables load first.
+            // Rollback snapshot: capture the state right before this line is shown.
+            engine.CaptureRollback(script.Name, index - 1);
+
+            // Appearance change may need an async asset load first.
             if (!string.IsNullOrEmpty(cmd.Appearance) && !string.IsNullOrEmpty(cmd.Speaker))
             {
                 State = PlayerState.WaitingAsset;
@@ -191,9 +203,13 @@ namespace VNKit
         IEnumerator CoSayWithAppearance(VNCommand cmd)
         {
             Sprite spr = null;
-            yield return engine.LoadCharacterSpriteAsync(cmd.Speaker, cmd.Appearance, s => spr = s);
-            engine.Characters.SetAppearance(cmd.Speaker, cmd.Appearance, spr);
-            State = PlayerState.Running; // same as sync DoSay path while typewriter runs
+            Object skel = null;
+            if (engine.GetSpineCharacter(cmd.Speaker) != null)
+                yield return VNSpineActor.LoadSkeleton(engine.GetSpineCharacter(cmd.Speaker).skeletonAddress, s => skel = s);
+            else
+                yield return engine.LoadCharacterSpriteAsync(cmd.Speaker, cmd.Appearance, s => spr = s);
+            engine.Characters.SetAppearance(cmd.Speaker, cmd.Appearance, spr, skel);
+            State = PlayerState.Running; // same as the sync DoSay path while the typewriter runs
             PlaySay(cmd);
         }
 
@@ -243,6 +259,8 @@ namespace VNKit
 
         bool DoChoice(VNCommand cmd)
         {
+            engine.CaptureRollback(script.Name, index - 1);
+
             currentOptions = new List<VNChoiceOption>();
             var texts = new List<string>();
             foreach (var o in cmd.Options)
@@ -275,7 +293,27 @@ namespace VNKit
             Step();
         }
 
-        // Поддерживает "Label" и "OtherScript.Label". Возвращает false, если не удаётся разрешить имя
+        void DoMinigame(VNCommand cmd)
+        {
+            if (!VNMinigames.Exists(cmd.Name))
+            {
+                VNLog.Warn("Unknown minigame '" + cmd.Name + "' (line " + cmd.LineNumber +
+                           "). Register it via VNMinigames.Register.");
+                return; // continue with the next command
+            }
+
+            State = PlayerState.WaitingMinigame;
+            string varName = cmd.Get("var");
+            engine.StartMinigame(cmd, delegate (bool success, string value)
+            {
+                if (!string.IsNullOrEmpty(varName))
+                    engine.Variables.Apply(varName + "=" + (string.IsNullOrEmpty(value) ? (success ? "1" : "0") : value));
+                State = PlayerState.Running;
+                Step();
+            });
+        }
+
+        /// <summary>Supports "Label" and "OtherScript.Label". Returns false when unresolvable.</summary>
         bool DoGoto(string label)
         {
             if (string.IsNullOrEmpty(label))
@@ -324,6 +362,35 @@ namespace VNKit
                 Sprite spr = null;
                 yield return engine.LoadBackgroundAsync(name, s => spr = s);
                 engine.Backgrounds.Set(name, spr, time);
+            }
+            State = PlayerState.Running;
+            Step();
+        }
+
+        IEnumerator CoCg(VNCommand cmd)
+        {
+            string name = cmd.Name;
+            float fade = cmd.GetFloat("fade", cmd.GetFloat("time", 0.6f));
+            if (string.IsNullOrEmpty(name) || name == "off" || name == "none")
+            {
+                engine.Cgs.Hide(fade);
+            }
+            else
+            {
+                var spineCfg = engine.GetSpineCg(name);
+                if (spineCfg != null)
+                {
+                    Object skel = null;
+                    yield return VNSpineActor.LoadSkeleton(spineCfg.skeletonAddress, s => skel = s);
+                    engine.Cgs.Show(name, null, skel, spineCfg, fade);
+                }
+                else
+                {
+                    Sprite spr = null;
+                    yield return engine.LoadCgAsync(name, s => spr = s);
+                    engine.Cgs.Show(name, spr, null, null, fade);
+                }
+                engine.UnlockCg(name);
             }
             State = PlayerState.Running;
             Step();
@@ -378,10 +445,17 @@ namespace VNKit
             }
 
             Sprite spr = null;
+            Object skel = null;
             if (cmd.GetBool("visible", true) && !string.IsNullOrEmpty(name))
-                yield return engine.LoadCharacterSpriteAsync(name, appearance ?? "Default", s => spr = s);
+            {
+                var spineCfg = engine.GetSpineCharacter(name);
+                if (spineCfg != null)
+                    yield return VNSpineActor.LoadSkeleton(spineCfg.skeletonAddress, s => skel = s);
+                else
+                    yield return engine.LoadCharacterSpriteAsync(name, appearance ?? "Default", s => spr = s);
+            }
 
-            engine.Characters.ApplyCommand(cmd, spr);
+            engine.Characters.ApplyCommand(cmd, spr, skel);
             State = PlayerState.Running;
             Step();
         }

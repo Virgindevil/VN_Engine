@@ -7,7 +7,7 @@ namespace VNKit
 {
     public enum VNValueType { Number, Text, Bool }
 
-    // Динамически типизированное значение, используемое системой переменных/выражений
+    /// <summary>A dynamically-typed value used by the variable/expression system.</summary>
     public struct VNValue
     {
         public VNValueType Type;
@@ -43,7 +43,7 @@ namespace VNKit
             if (t == "false" || t == "no" || t.Length == 0) return false;
             double d;
             if (double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out d)) return d != 0;
-            return true; // non-empty string is true
+            return true; // non-empty string is truthy
         }
 
         public string ToText()
@@ -56,11 +56,11 @@ namespace VNKit
         public override string ToString() { return ToText(); }
     }
 
-    /*
-    Небольшой оценщик выражений с рекурсивным нисходящим алгоритмом.
-    Поддерживает: числа, "строки", true/false, переменные, скобки,
-    + - * / % (с конкатенацией строк с помощью +), == != <= >= >=, && || !
-    */
+    /// <summary>
+    /// Small recursive-descent expression evaluator.
+    /// Supports: numbers, "strings", true/false, variables, parentheses,
+    /// + - * / % (with string concatenation via +), == != &lt; &lt;= &gt; &gt;=, && || !
+    /// </summary>
     public static class VNExpression
     {
         public static VNValue Evaluate(string expression, Func<string, VNValue> resolveVariable)
@@ -115,7 +115,7 @@ namespace VNKit
                         }
                         else { sb.Append(s[i]); i++; }
                     }
-                    i++; 
+                    i++; // closing quote
                     list.Add(new Tok { Kind = TokKind.Str, Text = sb.ToString() });
                     continue;
                 }
@@ -142,13 +142,13 @@ namespace VNKit
                 if (c == '+' || c == '-' || c == '*' || c == '/' || c == '%' ||
                     c == '<' || c == '>' || c == '!' || c == '(' || c == ')' || c == '=')
                 {
-                    // Одиночный знак '=' обрабатывается как '=='
+                    // single '=' treated as '=='
                     list.Add(new Tok { Kind = TokKind.Op, Text = c == '=' ? "==" : c.ToString() });
                     i++;
                     continue;
                 }
 
-                i++; // пропускает неизвестный символ
+                i++; // skip unknown char
             }
             list.Add(new Tok { Kind = TokKind.End });
             return list;

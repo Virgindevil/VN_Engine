@@ -1,4 +1,4 @@
-using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -7,16 +7,17 @@ using TMPro;
 
 namespace VNKit
 {
-    /*
-    Настройки во вкладках: Звук (громкость), Видео (разрешение / полноэкранный режим), Игра (скорость текста, авто, пропуск, язык, горячие клавиши).
-    Изменения применяются и сохраняются немедленно.
-    */
+    /// <summary>
+    /// Tabbed settings: Sound (volumes), Video (resolution / fullscreen), Game (text speed,
+    /// auto speed, skip-mode, language, rebindable hotkeys). Changes apply and save immediately.
+    /// </summary>
     public class SettingsUI
     {
         public bool IsOpen { get { return root.activeSelf; } }
 
         readonly GameObject root;
         readonly VisualNovelEngine engine;
+        readonly VNRunner host;
         readonly RectTransform soundPanel;
         readonly RectTransform videoPanel;
         readonly RectTransform gamePanel;
@@ -25,8 +26,12 @@ namespace VNKit
         readonly Button gameTab;
         TextMeshProUGUI resLabel;
         TextMeshProUGUI langLabel;
+        TextMeshProUGUI skipKeyLabel;
+        TextMeshProUGUI autoKeyLabel;
+        TextMeshProUGUI rollbackKeyLabel;
         readonly List<Resolution> uniqueResolutions = new List<Resolution>();
         int resIndex;
+        Coroutine keyCapture;
 
         static readonly string[] Languages = { "en", "ru", "ja", "zh", "de", "fr", "es", "ko" };
         static readonly string[] LanguageNames = { "English", "Русский", "日本語", "中文", "Deutsch", "Français", "Español", "한국어" };
@@ -37,16 +42,17 @@ namespace VNKit
             root = UIFactory.Rect("VNKit.Settings", parent).gameObject;
             UIFactory.Stretch((RectTransform)root.transform);
             UIFactory.DimBackground(root, 0.6f);
+            host = VNRunner.Create("VNKit.SettingsHost", root.transform);
 
             Button closeBtn;
-            var win = UIFactory.Window(root.transform, "Settings",
-                new Vector2(0.26f, 0.10f), new Vector2(0.74f, 0.90f), out closeBtn);
+            var win = UIFactory.Window(root.transform, VNLoc.T("settings.title"),
+                new Vector2(0.24f, 0.06f), new Vector2(0.76f, 0.94f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
 
-            // ---- Панель вкладок под заголовком ----
+            // ---- Tab bar under the header ----
             var tabBar = UIFactory.Rect("TabBar", win);
-            tabBar.anchorMin = new Vector2(0.04f, 0.86f);
-            tabBar.anchorMax = new Vector2(0.96f, 0.93f);
+            tabBar.anchorMin = new Vector2(0.04f, 0.88f);
+            tabBar.anchorMax = new Vector2(0.96f, 0.94f);
             tabBar.offsetMin = Vector2.zero;
             tabBar.offsetMax = Vector2.zero;
 
@@ -63,10 +69,10 @@ namespace VNKit
             videoTab = MakeTab(tabBar, "Video", () => ShowTab(1));
             gameTab  = MakeTab(tabBar, "Game",  () => ShowTab(2));
 
-            // ---- Область содержимого ----
+            // ---- Content area ----
             var contentArea = UIFactory.Rect("ContentArea", win);
-            contentArea.anchorMin = new Vector2(0.04f, 0.04f);
-            contentArea.anchorMax = new Vector2(0.96f, 0.85f);
+            contentArea.anchorMin = new Vector2(0.04f, 0.03f);
+            contentArea.anchorMax = new Vector2(0.96f, 0.87f);
             contentArea.offsetMin = Vector2.zero;
             contentArea.offsetMax = Vector2.zero;
 
@@ -78,9 +84,9 @@ namespace VNKit
             root.SetActive(false);
         }
 
-        Button MakeTab(RectTransform parent, string label, UnityAction onClick)
+        Button MakeTab(RectTransform parent, string id, UnityAction onClick)
         {
-            var b = UIFactory.Button(parent, "Tab." + label, label, 24, onClick);
+            var b = UIFactory.Button(parent, "Tab." + id, VNLoc.T("settings." + id.ToLower()), 24, onClick);
             UIFactory.Layout(b.gameObject, 0f, 0f);
             return b;
         }
@@ -125,10 +131,10 @@ namespace VNKit
             vlg.padding = new RectOffset(8, 8, 12, 8);
 
             var s = engine.Settings;
-            AddSliderRow(panel, "Master Volume", 0f, 1f, s.masterVolume, v => { s.masterVolume = v; engine.ApplySettings(); });
-            AddSliderRow(panel, "BGM Volume",    0f, 1f, s.bgmVolume,    v => { s.bgmVolume = v; engine.ApplySettings(); });
-            AddSliderRow(panel, "SFX Volume",    0f, 1f, s.sfxVolume,    v => { s.sfxVolume = v; engine.ApplySettings(); });
-            AddSliderRow(panel, "Voice Volume",  0f, 1f, s.voiceVolume,  v => { s.voiceVolume = v; engine.ApplySettings(); });
+            AddSliderRow(panel, "Master", VNLoc.T("settings.master"), 0f, 1f, s.masterVolume, v => { s.masterVolume = v; engine.ApplySettings(); });
+            AddSliderRow(panel, "Bgm", VNLoc.T("settings.bgm"), 0f, 1f, s.bgmVolume, v => { s.bgmVolume = v; engine.ApplySettings(); });
+            AddSliderRow(panel, "Sfx", VNLoc.T("settings.sfx"), 0f, 1f, s.sfxVolume, v => { s.sfxVolume = v; engine.ApplySettings(); });
+            AddSliderRow(panel, "Voice", VNLoc.T("settings.voice"), 0f, 1f, s.voiceVolume, v => { s.voiceVolume = v; engine.ApplySettings(); });
             return panel;
         }
 
@@ -163,7 +169,7 @@ namespace VNKit
             var resRow = UIFactory.Rect("ResRow", panel);
             UIFactory.Layout(resRow.gameObject, 0f, 52f);
 
-            var resTitle = UIFactory.Text(resRow, "Label", "Resolution", 24, TextAnchor.MiddleLeft, Color.white);
+            var resTitle = UIFactory.Text(resRow, "Label", VNLoc.T("settings.resolution"), 24, TextAnchor.MiddleLeft, UIFactory.TextColor);
             var rtrt = (RectTransform)resTitle.transform;
             rtrt.anchorMin = Vector2.zero;
             rtrt.anchorMax = new Vector2(0.32f, 1f);
@@ -177,7 +183,7 @@ namespace VNKit
             pbrt.offsetMin = Vector2.zero;
             pbrt.offsetMax = Vector2.zero;
 
-            resLabel = UIFactory.Text(resRow, "Value", "1920 × 1080", 24, TextAnchor.MiddleCenter, Color.white);
+            resLabel = UIFactory.Text(resRow, "Value", "1920 × 1080", 24, TextAnchor.MiddleCenter, UIFactory.TextColor);
             var vlrt = (RectTransform)resLabel.transform;
             vlrt.anchorMin = new Vector2(0.45f, 0f);
             vlrt.anchorMax = new Vector2(0.80f, 1f);
@@ -191,14 +197,14 @@ namespace VNKit
             nbrt.offsetMin = Vector2.zero;
             nbrt.offsetMax = Vector2.zero;
 
-            var fsToggle = UIFactory.Toggle(panel, "Fullscreen", "Fullscreen", s.fullscreen, v =>
+            var fsToggle = UIFactory.Toggle(panel, "Fullscreen", VNLoc.T("settings.fullscreen"), s.fullscreen, v =>
             {
                 s.fullscreen = v;
                 engine.ApplySettings();
             });
             UIFactory.Layout(fsToggle.gameObject, 0f, 48f);
 
-            var hint = UIFactory.Text(panel, "Hint", "Resolution applies immediately.", 18, TextAnchor.MiddleLeft, new Color(0.7f, 0.7f, 0.75f));
+            var hint = UIFactory.Text(panel, "Hint", VNLoc.T("settings.reshint"), 18, TextAnchor.MiddleLeft, new Color(0.7f, 0.7f, 0.75f));
             UIFactory.Layout(hint.gameObject, 0f, 32f);
 
             RefreshResolutionLabel();
@@ -256,37 +262,32 @@ namespace VNKit
         {
             var panel = UIFactory.Rect("GamePanel", parent);
             UIFactory.Stretch(panel);
-            var vlg = panel.gameObject.AddComponent<VerticalLayoutGroup>();
-            vlg.childAlignment = TextAnchor.UpperCenter;
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = true;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = false;
-            vlg.spacing = 16f;
-            vlg.padding = new RectOffset(8, 8, 8, 8);
+            var scroll = UIFactory.ScrollView(panel, "Scroll", out RectTransform content);
+            UIFactory.Stretch((RectTransform)scroll.transform);
 
             var s = engine.Settings;
 
-            AddSliderRow(panel, "Text Speed", 10f, 120f, s.textSpeed, v => { s.textSpeed = v; engine.ApplySettings(); });
+            AddSliderRow(content, "TextSpeed", VNLoc.T("settings.textspeed"), 10f, 120f, s.textSpeed, v => { s.textSpeed = v; engine.ApplySettings(); });
             // UI shows "speed" (higher = faster). Internally we store delay in seconds: delay = 5.5 - speed.
             float autoSpeed = Mathf.Clamp(5.5f - s.autoDelay, 0.5f, 5f);
-            AddSliderRow(panel, "Auto Play Speed", 0.5f, 5f, autoSpeed, v =>
+            AddSliderRow(content, "AutoSpeed", VNLoc.T("settings.autospeed"), 0.5f, 5f, autoSpeed, v =>
             {
                 s.autoDelay = 5.5f - v;
                 engine.ApplySettings();
             });
 
-            var skipToggle = UIFactory.Toggle(panel, "SkipUnread", "Skip only already-seen text", s.skipUnreadOnly, v =>
+            var skipToggle = UIFactory.Toggle(content, "SkipUnread", VNLoc.T("settings.skipunread"), s.skipUnreadOnly, v =>
             {
                 s.skipUnreadOnly = v;
                 engine.ApplySettings();
             });
             UIFactory.Layout(skipToggle.gameObject, 0f, 48f);
 
-            var langRow = UIFactory.Rect("LangRow", panel);
+            // ---- Language ----
+            var langRow = UIFactory.Rect("LangRow", content);
             UIFactory.Layout(langRow.gameObject, 0f, 52f);
 
-            var langTitle = UIFactory.Text(langRow, "Label", "Language", 24, TextAnchor.MiddleLeft, Color.white);
+            var langTitle = UIFactory.Text(langRow, "Label", VNLoc.T("settings.language"), 24, TextAnchor.MiddleLeft, UIFactory.TextColor);
             var ltrt = (RectTransform)langTitle.transform;
             ltrt.anchorMin = Vector2.zero;
             ltrt.anchorMax = new Vector2(0.32f, 1f);
@@ -300,7 +301,7 @@ namespace VNKit
             lprt.offsetMin = Vector2.zero;
             lprt.offsetMax = Vector2.zero;
 
-            langLabel = UIFactory.Text(langRow, "Value", "English", 24, TextAnchor.MiddleCenter, Color.white);
+            langLabel = UIFactory.Text(langRow, "Value", "English", 24, TextAnchor.MiddleCenter, UIFactory.TextColor);
             var llrt = (RectTransform)langLabel.transform;
             llrt.anchorMin = new Vector2(0.45f, 0f);
             llrt.anchorMax = new Vector2(0.80f, 1f);
@@ -314,17 +315,84 @@ namespace VNKit
             lnrt.offsetMin = Vector2.zero;
             lnrt.offsetMax = Vector2.zero;
 
-            var hotHeader = UIFactory.Text(panel, "HotkeysHeader", "— Controls —", 22, TextAnchor.MiddleCenter, new Color(0.75f, 0.7f, 0.8f));
+            // ---- Rebindable hotkeys ----
+            var hotHeader = UIFactory.Text(content, "HotkeysHeader", VNLoc.T("settings.controls"), 22, TextAnchor.MiddleCenter, new Color(0.75f, 0.7f, 0.8f));
             UIFactory.Layout(hotHeader.gameObject, 0f, 36f);
 
-            AddHotkeyLine(panel, "Advance", "Space / Enter / LMB");
-            AddHotkeyLine(panel, "Skip (hold)", "Ctrl");
-            AddHotkeyLine(panel, "Hide UI", "RMB");
-            AddHotkeyLine(panel, "Cancel / Close", "Esc");
-            AddHotkeyLine(panel, "Auto / Skip toggle", "Quick Menu");
+            skipKeyLabel = AddRebindRow(content, "SkipKey", VNLoc.T("settings.skipkey"), s.skipKey,
+                delegate { StartKeyCapture(0); });
+            autoKeyLabel = AddRebindRow(content, "AutoKey", VNLoc.T("settings.autokey"), s.autoKey,
+                delegate { StartKeyCapture(1); });
+            rollbackKeyLabel = AddRebindRow(content, "RollbackKey", VNLoc.T("settings.hk.rollback"), s.rollbackKey,
+                delegate { StartKeyCapture(2); });
+
+            AddHotkeyLine(content, VNLoc.T("settings.hk.advance"), "Space / Enter / LMB");
+            AddHotkeyLine(content, VNLoc.T("settings.hk.hide"), "RMB");
+            AddHotkeyLine(content, VNLoc.T("settings.hk.cancel"), "Esc");
+            AddHotkeyLine(content, VNLoc.T("settings.hk.rollback"), "Mouse Wheel Up / PageUp");
 
             RefreshLanguageLabel();
             return panel;
+        }
+
+        TextMeshProUGUI AddRebindRow(RectTransform content, string id, string label, KeyCode current, UnityAction onRebind)
+        {
+            var row = UIFactory.Rect("Rebind." + id, content);
+            UIFactory.Layout(row.gameObject, 0f, 44f);
+
+            var txt = UIFactory.Text(row, "Label", label, 22, TextAnchor.MiddleLeft, UIFactory.TextColor);
+            var trt = (RectTransform)txt.transform;
+            trt.anchorMin = Vector2.zero;
+            trt.anchorMax = new Vector2(0.45f, 1f);
+            trt.offsetMin = Vector2.zero;
+            trt.offsetMax = Vector2.zero;
+
+            var btn = UIFactory.Button(row, "Key", current.ToString(), 22, onRebind);
+            var brt = (RectTransform)btn.transform;
+            brt.anchorMin = new Vector2(0.5f, 0.1f);
+            brt.anchorMax = new Vector2(0.85f, 0.9f);
+            brt.offsetMin = Vector2.zero;
+            brt.offsetMax = Vector2.zero;
+
+            var keyText = brt.Find("Label").GetComponent<TextMeshProUGUI>();
+            return keyText;
+        }
+
+        void StartKeyCapture(int which) // 0 = skip, 1 = auto, 2 = rollback
+        {
+            if (keyCapture != null) host.StopCoroutine(keyCapture);
+            var label = which == 0 ? skipKeyLabel : which == 1 ? autoKeyLabel : rollbackKeyLabel;
+            keyCapture = host.StartCoroutine(CaptureKeyRoutine(which, label));
+        }
+
+        IEnumerator CaptureKeyRoutine(int which, TextMeshProUGUI label)
+        {
+            if (label != null) label.text = VNLoc.T("settings.presskey");
+            yield return null; // skip the click frame
+            while (true)
+            {
+                KeyCode k;
+                if (VNInput.AnyKeyDown(out k))
+                {
+                    if (k != KeyCode.Escape) // Esc cancels the capture
+                    {
+                        if (which == 0) engine.Settings.skipKey = k;
+                        else if (which == 1) engine.Settings.autoKey = k;
+                        else engine.Settings.rollbackKey = k;
+                        engine.ApplySettings();
+                        if (label != null) label.text = k.ToString();
+                    }
+                    else if (label != null)
+                    {
+                        label.text = (which == 0 ? engine.Settings.skipKey
+                            : which == 1 ? engine.Settings.autoKey
+                            : engine.Settings.rollbackKey).ToString();
+                    }
+                    break;
+                }
+                yield return null;
+            }
+            keyCapture = null;
         }
 
         void AddHotkeyLine(RectTransform parent, string action, string keys)
@@ -339,7 +407,7 @@ namespace VNKit
             art.offsetMin = Vector2.zero;
             art.offsetMax = Vector2.zero;
 
-            var k = UIFactory.Text(row, "Keys", keys, 20, TextAnchor.MiddleLeft, Color.white);
+            var k = UIFactory.Text(row, "Keys", keys, 20, TextAnchor.MiddleLeft, UIFactory.TextColor);
             var krt = (RectTransform)k.transform;
             krt.anchorMin = new Vector2(0.44f, 0f);
             krt.anchorMax = Vector2.one;
@@ -376,12 +444,12 @@ namespace VNKit
 
         // ============================== Helpers ==============================
 
-        void AddSliderRow(RectTransform content, string label, float min, float max, float value, UnityAction<float> onChange)
+        void AddSliderRow(RectTransform content, string id, string label, float min, float max, float value, UnityAction<float> onChange)
         {
-            var row = UIFactory.Rect("Row." + label, content);
+            var row = UIFactory.Rect("Row." + id, content);
             UIFactory.Layout(row.gameObject, 0f, 46f);
 
-            var txt = UIFactory.Text(row, "Label", label, 24, TextAnchor.MiddleLeft, Color.white);
+            var txt = UIFactory.Text(row, "Label", label, 24, TextAnchor.MiddleLeft, UIFactory.TextColor);
             var trt = (RectTransform)txt.transform;
             trt.anchorMin = Vector2.zero;
             trt.anchorMax = new Vector2(0.38f, 1f);
@@ -410,12 +478,16 @@ namespace VNKit
             }
             RefreshResolutionLabel();
             RefreshLanguageLabel();
+            if (skipKeyLabel != null) skipKeyLabel.text = engine.Settings.skipKey.ToString();
+            if (autoKeyLabel != null) autoKeyLabel.text = engine.Settings.autoKey.ToString();
+            if (rollbackKeyLabel != null) rollbackKeyLabel.text = engine.Settings.rollbackKey.ToString();
             root.SetActive(true);
             root.transform.SetAsLastSibling();
         }
 
         public void Hide()
         {
+            if (keyCapture != null) { host.StopCoroutine(keyCapture); keyCapture = null; }
             root.SetActive(false);
         }
     }

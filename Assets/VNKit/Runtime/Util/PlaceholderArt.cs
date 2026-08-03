@@ -2,11 +2,11 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /*
-    Генерирует простые цветные спрайты-заменители, чтобы можно было создать прототип истории
-    до появления каких-либо реальных графических элементов (включите параметр "Use Placeholder Graphics" в движке).
-    Цвета определяются по названию ресурса, поэтому каждое название выглядит по-разному.
-    */
+    /// <summary>
+    /// Generates simple colored stand-in sprites so a story can be prototyped
+    /// before any real art exists (enable "Use Placeholder Graphics" on the engine).
+    /// Colors are derived from the asset name, so every name looks distinct.
+    /// </summary>
     public static class PlaceholderArt
     {
         public static Sprite Character(string name)
@@ -31,7 +31,7 @@ namespace VNKit
                 }
             }
 
-            // Простые глаза, чтобы цилиндр воспринимался как персонаж.
+            // Simple eyes so the stand-in reads as a character.
             DrawCircle(px, w, h, Mathf.RoundToInt(w * 0.36f), Mathf.RoundToInt(h * 0.78f), 13, dark);
             DrawCircle(px, w, h, Mathf.RoundToInt(w * 0.64f), Mathf.RoundToInt(h * 0.78f), 13, dark);
 

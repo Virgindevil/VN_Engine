@@ -1,0 +1,110 @@
+; ---------------------------------------------------------
+; VNKit demo script — mechanics tour
+;   * backgrounds / characters / music / sfx
+;   * choices, variables, conditional branching
+;   * MINI-GAME:  @minigame Lockpick → result in $lockResult
+;   * EVENT CGs:  @cg — unlocked in the CG gallery (Title → Gallery).
+;     RooftopSunset is guaranteed, RooftopNight only on the good end:
+;     replaying with different choices is what fills the gallery.
+;   * SPINE: add an entry under Spine Characters / Spine CGs on the
+;     engine and every "appearance" below becomes an ANIMATION name
+;     (Ayame.Smile: plays the "Smile" animation; a CG listed in
+;     Spine CGs plays animated instead of static). Without Spine
+;     the same names resolve as sprites / placeholders.
+; Enable "Use Placeholder Graphics" to run this without any art.
+; ---------------------------------------------------------
+
+# Start
+
+@bg Campus time:0.8
+@bgm ThemeDay fade:1.5
+@set affection=0, lockResult=0
+
+A warm spring afternoon. The school day is finally over.
+
+@char Ayame.Idle pos:center time:0.5
+Ayame: Hey, you actually came! [br]I wasn't sure you would.
+
+; Emotion switch: with a Spine entry for "Ayame" this plays the
+; "Smile" ANIMATION mid-scene; with sprites it swaps the sprite.
+Ayame.Smile: The view from the rooftop is amazing at this hour.
+
+@char Ayame pos:left time:0.5
+@char Rin.Idle pos:right time:0.5
+Rin: Oh. You brought someone along.
+@sfx Chime
+
+Ayame.Smile: This is the transfer student I told you about.
+
+@choice "Greet Rin warmly" goto:Warm do:affection+=1 | "Nod quietly" goto:Quiet | "Try the old locker" goto:Locker
+
+# Warm
+Rin.Smile: ...Hi. Nice to meet you, I guess.
+Ayame.Laugh: See? I told you she warms up fast.
+@goto Park
+
+# Quiet
+Rin: Hm. The quiet type, huh.
+Ayame: Give them a chance, Rin.
+@goto Park
+
+; ---------------------------------------------------------
+; MINI-GAME — Skyrim-style lockpicking.
+; The engine pauses the script, runs the mini-game and stores
+; the outcome in $lockResult (1 = opened, 0 = failed).
+; ---------------------------------------------------------
+# Locker
+Rin: That rusty locker? Be my guest.
+@minigame Lockpick difficulty:1 picks:3 var:lockResult
+@if lockResult==1 goto:LockerOpen else:LockerShut
+
+# LockerOpen
+@sfx Chime
+@set affection+=1
+Rin.Smile: Huh. It actually opened. Impressive.
+Ayame.Laugh: Told you our new friend is full of surprises.
+@goto Park
+
+# LockerShut
+Rin: Locked tight. Maybe next time.
+Ayame.Shy: Don't worry about it. That lock is ancient anyway.
+@goto Park
+
+; ---------------------------------------------------------
+# Park
+@bg Rooftop time:1.2
+@stopBgm fade:2
+
+The three of you watch the clouds drift by.
+
+; EVENT CG #1 — always shown, always unlocked in the gallery.
+; Add "RooftopSunset" to Spine CGs on the engine to see it ANIMATED.
+@cg RooftopSunset fade:1.2
+A moment worth remembering.
+@cg off fade:0.8
+
+Ayame.Smile: Days like this make everything feel possible.
+
+@if affection>0 goto:GoodEnd else:NormalEnd
+
+; ---------------------------------------------------------
+; Good end = a SECOND, missable CG. Save here, then rollback
+; (mouse wheel up / PageUp) and pick other choices to compare.
+# GoodEnd
+@bgm ThemeSunset fade:1
+Rin.Smile: You're alright. Come back tomorrow, okay?
+
+; EVENT CG #2 — unlocked only on the good end.
+@cg RooftopNight fade:1.2
+The city lights flicker on, one by one.
+@cg off fade:0.8
+@goto Finale
+
+# NormalEnd
+Rin: ...See you around, I suppose.
+@goto Finale
+
+# Finale
+@hideChars time:1.0
+And so the day quietly came to an end.[br][br]<i>Gallery, saves, backlog, rollback — everything you just saw is already working. Thanks for trying VNKit!</i>
+@goto Epilogue.Start

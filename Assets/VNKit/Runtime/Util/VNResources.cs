@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,115 +6,45 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace VNKit
 {
-    /*
-    Загрузка ресурсов на основе адресных объектов с использованием кэша в оперативной памяти.
-    Соглашение об адресации (установите эти адреса в качестве адресных "адресов" каждого ресурса):
-
-    VN/Backgrounds/Campus
-    VN/Characters/Ayame/Smile
-    VN/Audio/BGM/ThemeDay
-    VN/Audio/SFX/Chime
-    VN/Audio/Voice/hana_01
-
-    Контент находится в Assets/VNContent/... (Инструменты → VNKit → Создать папки контента).
-    Отметьте ресурсы как адресные в Window → Asset Management → Addressables → Groups.
-    */
+    /// <summary>
+    /// Async content loading on top of Addressables, with caching and handle tracking.
+    /// Replaces the old synchronous Resources loader. Addressing convention (configurable
+    /// via VisualNovelEngine.resourcesRoot):
+    ///   VN/Backgrounds/Campus          — background sprite or texture
+    ///   VN/Characters/Ayame/Smile      — character sprite or texture
+    ///   VN/CG/RooftopSunset            — event CG sprite or texture
+    ///   VN/Audio/BGM/ThemeDay          — AudioClip
+    ///   VN/Audio/SFX/Chime             — AudioClip
+    ///   VN/Audio/Voice/hana_01         — AudioClip
+    /// Mark assets Addressable with matching addresses (groups per category recommended
+    /// for WebGL / mobile size control and remote catalogs).
+    /// </summary>
+    
     public static class VNResources
     {
         static readonly Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
         static readonly Dictionary<string, AudioClip> clipCache = new Dictionary<string, AudioClip>();
-        static readonly Dictionary<string, AsyncOperationHandle> handles = new Dictionary<string, AsyncOperationHandle>();
-
+        static readonly List<AsyncOperationHandle> handles = new List<AsyncOperationHandle>();
         static bool initialized;
 
-        // ------------------------------------------------------------------
-        // Initialization
-        // ------------------------------------------------------------------
-
-        /*
-        Инициализирует систему Addressables (каталог, локальные/удалённые провайдеры).
-        Можно безопасно вызывать несколько раз; последующие вызовы ничего не делают.
-        Не генерирует исключение, если Addressables ещё не полностью настроена.
-        */
-        public static IEnumerator Initialize(Action onDone = null)
+        /// <summary>Initialize the Addressables runtime (catalogs, providers). Required for remote groups / WebGL.</summary>
+        public static IEnumerator Initialize()
         {
-            if (initialized)
-            {
-                if (onDone != null) onDone();
-                yield break;
-            }
+            if (initialized) yield break;
 
-            AsyncOperationHandle handle = default;
-            bool started = false;
+            // autoReleaseHandle: false — since Addressables 1.21 the default (true) releases
+            // the handle as soon as initialization completes, so reading op.Status after the
+            // yield throws "Attempting to use an invalid operation handle".
+            var op = Addressables.InitializeAsync(false);
+            yield return op;
 
-            // Start outside try so we can yield safely.
-            try
-            {
-                handle = Addressables.InitializeAsync();
-                started = true;
-            }
-            catch (Exception e)
-            {
-                VNLog.Error("Addressables.InitializeAsync failed to start: " + e.Message);
-            }
-
-            if (started)
-            {
-                yield return handle;
-
-                if (handle.IsValid() && handle.Status == AsyncOperationStatus.Succeeded)
-                    initialized = true;
-                else if (!handle.IsValid())
-                    initialized = true; 
-                else
-                    VNLog.Warn("Addressables.InitializeAsync finished with status: " + handle.Status);
-            }
-
-            // Даже если инициализация не удалась, пометьте значение true, чтобы загрузка продолжилась (при загрузке будет возвращено значение null)
-            if (!initialized)
-            {
-                VNLog.Warn("Addressables not fully ready. Content loads may fail until assets are marked Addressable.");
-                initialized = true;
-            }
-
-            if (onDone != null) onDone();
+            initialized = op.Status == AsyncOperationStatus.Succeeded;
+            if (!initialized) VNLog.Error("Addressables initialization failed.");
+            Addressables.Release(op);
         }
 
-        public static bool IsInitialized { get { return initialized; } }
-
-        // ------------------------------------------------------------------
-        // Cache find
-        // ------------------------------------------------------------------
-
-        public static Sprite GetCachedSprite(string address)
+        public static IEnumerator LoadSprite(string address, System.Action<Sprite> onDone)
         {
-            Sprite s;
-            return spriteCache.TryGetValue(address, out s) ? s : null;
-        }
-
-        public static AudioClip GetCachedClip(string address)
-        {
-            AudioClip c;
-            return clipCache.TryGetValue(address, out c) ? c : null;
-        }
-
-        // ------------------------------------------------------------------
-        // Async loaders (пока что на корутинах)
-        // ------------------------------------------------------------------
-
-        /*
-        Загружает спрайт по ключу Addressables.
-        Также принимает адрес Texture2D и оборачивает его в спрайт.
-        Вызывает onDone(null), если ресурс отсутствует.
-        */
-        public static IEnumerator LoadSprite(string address, Action<Sprite> onDone)
-        {
-            if (string.IsNullOrEmpty(address))
-            {
-                if (onDone != null) onDone(null);
-                yield break;
-            }
-
             Sprite cached;
             if (spriteCache.TryGetValue(address, out cached))
             {
@@ -123,53 +52,34 @@ namespace VNKit
                 yield break;
             }
 
-            // 1) Sprite
-            var handle = Addressables.LoadAssetAsync<Sprite>(address);
-            yield return handle;
-
-            if (handle.IsValid() && handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+            Sprite s = null;
+            var op = Addressables.LoadAssetAsync<Sprite>(address);
+            yield return op;
+            if (op.Status == AsyncOperationStatus.Succeeded && op.Result != null)
             {
-                Track(address, handle);
-                spriteCache[address] = handle.Result;
-                if (onDone != null) onDone(handle.Result);
-                yield break;
+                s = op.Result;
+                handles.Add(op);
+            }
+            else
+            {
+                // The asset may be imported as a plain Texture2D.
+                var texOp = Addressables.LoadAssetAsync<Texture2D>(address);
+                yield return texOp;
+                if (texOp.Status == AsyncOperationStatus.Succeeded && texOp.Result != null)
+                {
+                    var tex = texOp.Result;
+                    s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                    handles.Add(texOp);
+                }
             }
 
-            if (handle.IsValid()) Addressables.Release(handle);
-
-            // 2) Texture2D → Sprite
-            var texHandle = Addressables.LoadAssetAsync<Texture2D>(address);
-            yield return texHandle;
-
-            if (texHandle.IsValid() && texHandle.Status == AsyncOperationStatus.Succeeded && texHandle.Result != null)
-            {
-                var t = texHandle.Result;
-                var sprite = Sprite.Create(
-                    t,
-                    new Rect(0, 0, t.width, t.height),
-                    new Vector2(0.5f, 0.5f),
-                    100f);
-                sprite.name = address;
-                Track(address, texHandle);
-                spriteCache[address] = sprite;
-                if (onDone != null) onDone(sprite);
-                yield break;
-            }
-
-            if (texHandle.IsValid()) Addressables.Release(texHandle);
-            VNLog.Warn("Sprite not found at Addressables key: " + address);
-            if (onDone != null) onDone(null);
+            if (s == null) VNLog.Warn("Sprite not found at address '" + address + "'.");
+            spriteCache[address] = s;
+            if (onDone != null) onDone(s);
         }
 
-        // Загружает AudioClip по Addressables key
-        public static IEnumerator LoadClip(string address, Action<AudioClip> onDone)
+        public static IEnumerator LoadClip(string address, System.Action<AudioClip> onDone)
         {
-            if (string.IsNullOrEmpty(address))
-            {
-                if (onDone != null) onDone(null);
-                yield break;
-            }
-
             AudioClip cached;
             if (clipCache.TryGetValue(address, out cached))
             {
@@ -177,78 +87,49 @@ namespace VNKit
                 yield break;
             }
 
-            var handle = Addressables.LoadAssetAsync<AudioClip>(address);
-            yield return handle;
-
-            if (handle.IsValid() && handle.Status == AsyncOperationStatus.Succeeded && handle.Result != null)
+            AudioClip clip = null;
+            var op = Addressables.LoadAssetAsync<AudioClip>(address);
+            yield return op;
+            if (op.Status == AsyncOperationStatus.Succeeded && op.Result != null)
             {
-                Track(address, handle);
-                clipCache[address] = handle.Result;
-                if (onDone != null) onDone(handle.Result);
-                yield break;
+                clip = op.Result;
+                handles.Add(op);
             }
 
-            if (handle.IsValid()) Addressables.Release(handle);
-            VNLog.Warn("AudioClip not found at Addressables key: " + address);
-            if (onDone != null) onDone(null);
+            if (clip == null) VNLog.Warn("Audio clip not found at address '" + address + "'.");
+            clipCache[address] = clip;
+            if (onDone != null) onDone(clip);
         }
 
-        // ------------------------------------------------------------------
-        // Preload helpers
-        // ------------------------------------------------------------------
-
-        public static IEnumerator PreloadSprites(IList<string> addresses, Action<float, string> onProgress = null)
+        /// <summary>Preload a list of sprite addresses with progress reporting (0..1, current address).</summary>
+        public static IEnumerator PreloadSprites(IList<string> addresses, System.Action<float, string> onProgress)
         {
-            if (addresses == null || addresses.Count == 0)
-            {
-                if (onProgress != null) onProgress(1f, null);
-                yield break;
-            }
-
+            if (addresses == null || addresses.Count == 0) yield break;
             for (int i = 0; i < addresses.Count; i++)
             {
-                string addr = addresses[i];
-                if (onProgress != null) onProgress(i / (float)addresses.Count, addr);
-                yield return LoadSprite(addr, null);
+                if (onProgress != null) onProgress(i / (float)addresses.Count, addresses[i]);
+                yield return LoadSprite(addresses[i], null);
             }
             if (onProgress != null) onProgress(1f, null);
         }
 
-        public static IEnumerator PreloadClips(IList<string> addresses, Action<float, string> onProgress = null)
+        /// <summary>Preload a list of audio addresses with progress reporting.</summary>
+        public static IEnumerator PreloadClips(IList<string> addresses, System.Action<float, string> onProgress)
         {
-            if (addresses == null || addresses.Count == 0)
-            {
-                if (onProgress != null) onProgress(1f, null);
-                yield break;
-            }
-
+            if (addresses == null || addresses.Count == 0) yield break;
             for (int i = 0; i < addresses.Count; i++)
             {
-                string addr = addresses[i];
-                if (onProgress != null) onProgress(i / (float)addresses.Count, addr);
-                yield return LoadClip(addr, null);
+                if (onProgress != null) onProgress(i / (float)addresses.Count, addresses[i]);
+                yield return LoadClip(addresses[i], null);
             }
             if (onProgress != null) onProgress(1f, null);
         }
 
-        // ------------------------------------------------------------------
-        // Lifetime
-        // ------------------------------------------------------------------
-
-        static void Track(string address, AsyncOperationHandle handle)
-        {
-            AsyncOperationHandle old;
-            if (handles.TryGetValue(address, out old) && old.IsValid())
-                Addressables.Release(old);
-            handles[address] = handle;
-        }
-
+        /// <summary>Release every tracked Addressables handle and clear the caches (e.g. on scene unload).</summary>
         public static void ReleaseAll()
         {
-            foreach (var kv in handles)
-            {
-                if (kv.Value.IsValid()) Addressables.Release(kv.Value);
-            }
+            for (int i = 0; i < handles.Count; i++)
+                if (handles[i].IsValid()) Addressables.Release(handles[i]);
             handles.Clear();
             spriteCache.Clear();
             clipCache.Clear();

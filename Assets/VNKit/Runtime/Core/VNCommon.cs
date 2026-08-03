@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VNKit
 {
-    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, Ended }
+    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, WaitingMinigame, Ended }
 
     [Serializable]
     public class VNSettings
@@ -26,6 +26,11 @@ namespace VNKit
         public int resolutionWidth = 1920;
         public int resolutionHeight = 1080;
         public bool fullscreen = true;
+
+        // Hotkeys (rebindable in Settings > Game)
+        [Tooltip("Hold to skip text")] public KeyCode skipKey = KeyCode.LeftControl;
+        [Tooltip("Toggle auto mode")] public KeyCode autoKey = KeyCode.A;
+        [Tooltip("Rollback one line")] public KeyCode rollbackKey = KeyCode.PageUp;
     }
 
     [Serializable]
@@ -41,15 +46,14 @@ namespace VNKit
         public static void Error(string msg) { Debug.LogError("[VNKit] " + msg); }
     }
 
-    // Tiny MonoBehaviour используется исключительно в качестве хоста для сопрограмм для сервисов, не использующих MonoBehaviour.
+    /// <summary>
+    /// Tiny MonoBehaviour used purely as a coroutine host for non-MonoBehaviour services.
+    /// Created with a RectTransform and stretched when the parent is a RectTransform,
+    /// so children that use fractional anchors (DialogueUI base layer, CharacterActor,
+    /// BackgroundManager) get a real size instead of collapsing to 0x0 at screen center.
+    /// </summary>
     public class VNRunner : MonoBehaviour
     {
-        /*
-        Создает хост сопрограммы. Если родительский элемент — RectTransform (иерархия пользовательского интерфейса),
-        хост растягивается, чтобы заполнить его, так что дочерние элементы, использующие дробные привязки
-        (базовый слой DialogueUI, CharacterActor, BackgroundManager), получают реальный размер
-        вместо того, чтобы сжиматься до точки 0×0 в центре.
-        */
         public static VNRunner Create(string name, Transform parent)
         {
             var go = new GameObject(name, typeof(RectTransform));

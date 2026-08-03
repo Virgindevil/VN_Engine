@@ -3,7 +3,11 @@ using UnityEngine;
 
 namespace VNKit
 {
-    /// <summary>Создает, перемещает, скрывает и восстанавливает персонажей на сцене</summary>
+    /// <summary>
+    /// Spawns, moves, hides and restores the on-stage characters.
+    /// Sprites / Spine skeletons are loaded asynchronously by the caller (ScriptPlayer
+    /// or VisualNovelEngine) and handed over ready-made.
+    /// </summary>
     public class CharacterManager
     {
         readonly VisualNovelEngine engine;
@@ -16,11 +20,7 @@ namespace VNKit
             runner = VNRunner.Create("VNKit.Characters", stageRoot);
         }
 
-        /*
-        Применяет команду @char с предварительно загруженным спрайтом.
-        ScriptPlayer загружает спрайт через Addressables перед вызовом этой функции.
-        */ 
-        public void ApplyCommand(VNCommand cmd, Sprite sprite)
+        public void ApplyCommand(VNCommand cmd, Sprite sprite, Object spineData)
         {
             if (string.IsNullOrEmpty(cmd.Name))
             {
@@ -43,14 +43,10 @@ namespace VNKit
             CharacterActor existing;
             float fallback = actors.TryGetValue(name, out existing) ? existing.PosX : 0.5f;
             float pos = ParsePos(cmd.Get("pos", cmd.Pos), fallback);
-            Show(name, appearance, pos, time, sprite);
+            Show(name, appearance, pos, time, sprite, spineData);
         }
 
-        /*
-        Отображает персонажа. Передайте предварительно загруженный спрайт (из Addressables).
-        Если спрайт равен null, а у актора уже есть такой же внешний вид, сохранит текущий.
-        */
-        public void Show(string name, string appearance, float pos, float time, Sprite sprite)
+        public void Show(string name, string appearance, float pos, float time, Sprite sprite, Object spineData)
         {
             CharacterActor a;
             bool isNew = !actors.TryGetValue(name, out a);
@@ -60,11 +56,19 @@ namespace VNKit
                 actors[name] = a;
             }
 
-            string app = appearance ?? (a.Appearance ?? "Default");
-            if (sprite != null)
-                a.SetSprite(sprite, app);
-            else if (app != a.Appearance || !a.HasSprite)
-                a.SetSprite(null, app);
+            var spineCfg = engine.GetSpineCharacter(name);
+            if (spineCfg != null)
+            {
+                // Spine character: appearance == animation name.
+                string anim = appearance ?? (a.Spine != null ? a.Appearance : null) ?? spineCfg.defaultAnimation;
+                a.SetSpine(spineData, anim, spineCfg);
+            }
+            else
+            {
+                string app = appearance ?? (a.Appearance ?? "Default");
+                if (app != a.Appearance || !a.HasSprite)
+                    a.SetSprite(sprite, app);
+            }
 
             a.SetPosition(pos, isNew ? 0f : time);
             a.Show(time);
@@ -101,13 +105,18 @@ namespace VNKit
             actors.Clear();
         }
 
-        //Мгновенная смена внешнего вида. Передаёт предварительно загруженный спрайт
-        public void SetAppearance(string name, string appearance, Sprite sprite)
+        /// <summary>Instant appearance/animation swap used by "Name.Appearance:" dialogue prefixes.</summary>
+        public void SetAppearance(string name, string appearance, Sprite sprite, Object spineData)
         {
             CharacterActor a;
             if (!actors.TryGetValue(name, out a)) return;
-            if (a.Appearance == appearance && a.HasSprite) return;
-            a.SetSprite(sprite, appearance);
+            if (a.Appearance == appearance) return;
+
+            var spineCfg = engine.GetSpineCharacter(name);
+            if (spineCfg != null)
+                a.SetSpine(spineData, appearance, spineCfg);
+            else
+                a.SetSprite(sprite, appearance);
         }
 
         public List<VNCharState> GetStates()
@@ -122,30 +131,34 @@ namespace VNKit
             return list;
         }
 
-        /*
-        Мгновенное восстановление. sprites[i] должны соответствовать states[i] (тот же порядок, только видимые элементы).
-        Вызывается после загрузки всех спрайтов через Addressables.
-        */
-        public void RestoreStates(List<VNCharState> states, List<Sprite> sprites)
+        /// <summary>Instant restore from a save file. sprites / spineDatas align with visible states.</summary>
+        public void RestoreStates(List<VNCharState> states, List<Sprite> sprites, List<Object> spineDatas)
         {
             ClearAll();
             if (states == null) return;
-            int si = 0;
-            for (int i = 0; i < states.Count; i++)
+            int i = 0;
+            foreach (var s in states)
             {
-                var s = states[i];
                 if (!s.visible) continue;
                 var a = new CharacterActor(runner.transform, s.name, runner);
                 actors[s.name] = a;
-                Sprite spr = (sprites != null && si < sprites.Count) ? sprites[si] : null;
-                si++;
-                a.SetSprite(spr, s.appearance);
+
+                Sprite spr = sprites != null && i < sprites.Count ? sprites[i] : null;
+                Object skel = spineDatas != null && i < spineDatas.Count ? spineDatas[i] : null;
+
+                var spineCfg = engine.GetSpineCharacter(s.name);
+                if (spineCfg != null)
+                    a.SetSpine(skel, s.appearance ?? spineCfg.defaultAnimation, spineCfg);
+                else
+                    a.SetSprite(spr, s.appearance);
+
                 a.SetPosition(s.pos, 0f);
                 a.Show(0f);
+                i++;
             }
         }
 
-        // лево / среднее лево / центр / среднее право / право, или дробь от 0 до 1
+        /// <summary>left / midleft / center / midright / right, or a 0..1 fraction.</summary>
         public static float ParsePos(string token, float fallback)
         {
             if (string.IsNullOrEmpty(token)) return fallback;

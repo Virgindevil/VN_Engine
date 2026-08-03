@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    //Прокручиваемая история ранее отображенных строк
+    /// <summary>Scrollable history of previously displayed lines (Naninovel-style backlog).</summary>
     public class BacklogUI
     {
         public bool IsOpen { get { return root.activeSelf; } }
@@ -20,10 +20,12 @@ namespace VNKit
             UIFactory.DimBackground(root, 0.6f);
 
             Button closeBtn;
-            var win = UIFactory.Window(root.transform, "Backlog",
+            var win = UIFactory.Window(root.transform, VNLoc.T("backlog.title"),
                 new Vector2(0.15f, 0.10f), new Vector2(0.85f, 0.90f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
 
+            // UIFactory.ScrollView clips via RectMask2D (no alpha-dependent Mask),
+            // so entries are always visible.
             scroll = UIFactory.ScrollView(win, "Scroll", out content);
             var srt = (RectTransform)scroll.transform;
             srt.anchorMin = new Vector2(0.02f, 0.02f);
@@ -44,7 +46,7 @@ namespace VNKit
 
             if (entries == null || entries.Count == 0)
             {
-                var empty = UIFactory.Text(content, "Empty", "Nothing yet.", 26,
+                var empty = UIFactory.Text(content, "Empty", VNLoc.T("backlog.empty"), 26,
                     TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.5f));
                 UIFactory.Layout(empty.gameObject, 0f, 80f);
             }
@@ -56,13 +58,13 @@ namespace VNKit
                     string body = string.IsNullOrEmpty(e.speaker)
                         ? e.text
                         : "<b>" + e.speaker + "</b>   " + e.text;
-                    var t = UIFactory.Text(content, "Entry" + i, body, 26, TextAnchor.UpperLeft, Color.white);
-                    t.lineSpacing = 1.15f;
+                    var t = UIFactory.Text(content, "Entry" + i, body, 26, TextAnchor.UpperLeft, UIFactory.TextColor);
+                    t.lineSpacing = 8f;
                 }
             }
 
             Canvas.ForceUpdateCanvases();
-            scroll.verticalNormalizedPosition = 0f; // переход на новую линию
+            scroll.verticalNormalizedPosition = 0f; // jump to the newest line
         }
 
         public void Hide()

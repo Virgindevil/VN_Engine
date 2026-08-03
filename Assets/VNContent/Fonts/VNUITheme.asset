@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dcc38e0ec84b41878fbaeb651b6e1bf0, type: 3}
+  m_Name: VNUITheme
+  m_EditorClassIdentifier: 
+  font: {fileID: 11400000, guid: 52eae6605a6363e408fdf7e1c4a753c1, type: 2}
+  panelColor: {r: 0.09, g: 0.1, b: 0.14, a: 0.98}
+  buttonColor: {r: 0.16, g: 0.17, b: 0.23, a: 0.96}
+  accentColor: {r: 0.85, g: 0.45, b: 0.65, a: 1}
+  textColor: {r: 1, g: 1, b: 1, a: 1}
+  dialoguePanelColor: {r: 0, g: 0, b: 0, a: 0.72}
+  titleMenuAnchorMin: {x: 0.38, y: 0.16}
+  titleMenuAnchorMax: {x: 0.62, y: 0.54}
+  titleButtonHeight: 66
+  titleButtonSpacing: 16
+  titleButtonFontSize: 28
+  titleFontSize: 76
+  showTitleFooter: 1
+  messageFontSize: 30
+  nameFontSize: 30
+  quickMenuButtonWidth: 112

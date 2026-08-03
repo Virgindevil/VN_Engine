@@ -4,22 +4,27 @@ using UnityEngine.UI;
 
 namespace VNKit
 {
-    /// <summary>Один персонаж на сцене: спрайт, зафиксированный в горизонтальном положении, с эффектами затухания и скольжения</summary>
+    /// <summary>
+    /// One on-stage character: a sprite (or a Spine skeleton) anchored to a horizontal
+    /// position, with fades and slides.
+    /// </summary>
     public class CharacterActor
     {
         public string Name { get; private set; }
         public string Appearance { get; private set; }
         public float PosX { get; private set; }
         public bool Visible { get; private set; }
-        public bool HasSprite { get { return image.sprite != null; } }
+        public bool HasSprite { get { return image.sprite != null || spine != null; } }
+        public VNSpineActor Spine { get { return spine; } }
 
         readonly RectTransform root;
         readonly Image image;
         readonly CanvasGroup group;
         readonly VNRunner host;
+        VNSpineActor spine;
         Coroutine anim;
 
-        const float CharHeight = 940f; // для соотношения сторон 1920x1080 
+        const float CharHeight = 940f; // in 1920x1080 reference space
 
         public CharacterActor(Transform parent, string name, VNRunner host)
         {
@@ -29,6 +34,7 @@ namespace VNKit
             root = UIFactory.Rect("Char." + name, parent);
             root.pivot = new Vector2(0.5f, 0f);
             root.anchorMin = root.anchorMax = new Vector2(0.5f, 0f);
+            root.sizeDelta = new Vector2(CharHeight * 0.6f, CharHeight);
 
             group = root.gameObject.AddComponent<CanvasGroup>();
             group.alpha = 0f;
@@ -45,6 +51,7 @@ namespace VNKit
 
         public void SetSprite(Sprite s, string appearance)
         {
+            ClearSpine();
             Appearance = appearance;
             image.sprite = s;
             image.enabled = s != null;
@@ -53,6 +60,31 @@ namespace VNKit
                 var r = s.rect;
                 root.sizeDelta = new Vector2(CharHeight * r.width / r.height, CharHeight);
             }
+        }
+
+        /// <summary>Attach (or re-drive) a Spine skeleton. The appearance is the animation name.</summary>
+        public void SetSpine(Object skeletonData, string animation, VNSpineCharEntry cfg)
+        {
+            Appearance = animation;
+            image.enabled = false;
+            image.sprite = null;
+
+            if (spine == null && skeletonData != null)
+            {
+                root.sizeDelta = new Vector2(CharHeight * 0.6f, CharHeight);
+                spine = VNSpineActor.Create(root, "Spine", skeletonData, animation,
+                    cfg != null && cfg.loop, cfg != null ? cfg.scale : 1f);
+            }
+            else if (spine != null)
+            {
+                spine.Play(animation, cfg != null && cfg.loop);
+            }
+        }
+
+        void ClearSpine()
+        {
+            if (spine != null) Object.Destroy(spine.gameObject);
+            spine = null;
         }
 
         public void SetPosition(float x, float time)
@@ -128,6 +160,7 @@ namespace VNKit
         public void DestroyActor()
         {
             StopAnim();
+            ClearSpine();
             if (root != null) Object.Destroy(root.gameObject);
         }
 

@@ -1,10 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 namespace VNKit
 {
-    // Сохранение/загрузка сетки игровых автоматов с миниатюрами, временными метками и предварительным просмотром линий
+    /// <summary>Save / load slot grid with thumbnails, timestamps and line previews.</summary>
     public class SaveLoadUI
     {
         public enum Mode { Save, Load }
@@ -15,7 +14,7 @@ namespace VNKit
         readonly GameObject root;
         readonly VisualNovelEngine engine;
         readonly RectTransform grid;
-        readonly TextMeshProUGUI titleText;
+        readonly TMPro.TextMeshProUGUI titleText;
         Mode mode;
 
         public SaveLoadUI(Transform parent, VisualNovelEngine engine)
@@ -30,8 +29,8 @@ namespace VNKit
                 new Vector2(0.10f, 0.07f), new Vector2(0.90f, 0.93f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
 
-            // Функция Window() создала заголовок с именем "Title"
-            titleText = win.Find("Header/Title").GetComponent<TextMeshProUGUI>();
+            // Window() created the header text named "Title" — grab it for mode switching.
+            titleText = win.GetComponent<RectTransform>().Find("Header/Title").GetComponent<TMPro.TextMeshProUGUI>();
 
             grid = UIFactory.Rect("Grid", win);
             grid.anchorMin = new Vector2(0.03f, 0.03f);
@@ -52,7 +51,7 @@ namespace VNKit
         public void Show(Mode mode)
         {
             this.mode = mode;
-            titleText.text = mode == Mode.Save ? "Save Game" : "Load Game";
+            titleText.text = mode == Mode.Save ? VNLoc.T("saveload.save") : VNLoc.T("saveload.load");
             root.SetActive(true);
             root.transform.SetAsLastSibling();
             Refresh();
@@ -81,6 +80,7 @@ namespace VNKit
             var btn = UIFactory.Button(grid, "Slot" + slot, "", 20, delegate { OnSlotClicked(captured); });
             var brt = (RectTransform)btn.transform;
 
+            // Thumbnail (left side)
             var thumbRT = UIFactory.Rect("Thumb", brt);
             thumbRT.anchorMin = new Vector2(0.03f, 0.08f);
             thumbRT.anchorMax = new Vector2(0.32f, 0.92f);
@@ -98,7 +98,8 @@ namespace VNKit
                 }
             }
 
-            var slotLabel = UIFactory.Text(brt, "SlotLabel", "Slot " + slot, 24,
+            // Slot label
+            var slotLabel = UIFactory.Text(brt, "SlotLabel", VNLoc.T("saveload.slot") + slot, 24,
                 TextAnchor.MiddleLeft, Color.white);
             var slrt = (RectTransform)slotLabel.transform;
             slrt.anchorMin = new Vector2(0.36f, 0.68f);
@@ -106,6 +107,7 @@ namespace VNKit
             slrt.offsetMin = Vector2.zero;
             slrt.offsetMax = Vector2.zero;
 
+            // Info text
             string info;
             if (meta != null)
             {
@@ -113,7 +115,7 @@ namespace VNKit
                 if (preview.Length > 46) preview = preview.Substring(0, 46) + "...";
                 info = meta.timestamp + "\n" + preview;
             }
-            else info = has ? "..." : "- empty -";
+            else info = has ? "..." : VNLoc.T("saveload.empty");
 
             var infoText = UIFactory.Text(brt, "Info", info, 18, TextAnchor.UpperLeft,
                 new Color(1f, 1f, 1f, has ? 0.85f : 0.4f));
@@ -124,7 +126,9 @@ namespace VNKit
             irt.offsetMax = Vector2.zero;
 
             if (mode == Mode.Load && !has)
+            {
                 btn.interactable = false;
+            }
         }
 
         void OnSlotClicked(int slot)
@@ -135,7 +139,7 @@ namespace VNKit
             }
             else
             {
-                engine.LoadGame(slot);
+                engine.LoadGame(slot); // on success the engine closes this panel
             }
         }
     }

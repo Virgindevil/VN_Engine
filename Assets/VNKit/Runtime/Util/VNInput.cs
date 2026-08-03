@@ -3,10 +3,11 @@ using UnityEngine.EventSystems;
 
 namespace VNKit
 {
-    /*
-    Абстракция ввода, работающая с устаревшим менеджером ввода,
-    новым пакетом системы ввода или обоими (с переключением на этапе компиляции).
-    */
+    /// <summary>
+    /// Input abstraction that works with the legacy Input Manager,
+    /// the new Input System package, or both (compile-time switched).
+    /// Hotkeys are rebindable: skip / auto / rollback keys come from VNSettings.
+    /// </summary>
     public static class VNInput
     {
         public static bool AdvancePressed()
@@ -26,14 +27,69 @@ namespace VNKit
 #endif
         }
 
-        public static bool SkipHeld()
+        /// <summary>Hold-to-skip. The key is configurable (Settings > Game); defaults to Ctrl.</summary>
+        public static bool SkipHeld(KeyCode key)
         {
 #if ENABLE_LEGACY_INPUT_MANAGER
-            return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+            if (Input.GetKey(key)) return true;
+            // Convenience: both Ctrl keys work when either is bound.
+            if (key == KeyCode.LeftControl && Input.GetKey(KeyCode.RightControl)) return true;
+            if (key == KeyCode.RightControl && Input.GetKey(KeyCode.LeftControl)) return true;
+            return false;
 #elif ENABLE_INPUT_SYSTEM
             var kb = UnityEngine.InputSystem.Keyboard.current;
             return kb != null && (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed);
 #else
+            return false;
+#endif
+        }
+
+        /// <summary>One-shot press of a configurable key (auto toggle, rollback).</summary>
+        public static bool KeyPressed(KeyCode key)
+        {
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.GetKeyDown(key);
+#elif ENABLE_INPUT_SYSTEM
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb == null) return false;
+            if (key == KeyCode.A) return kb.aKey.wasPressedThisFrame;
+            if (key == KeyCode.PageUp) return kb.pageUpKey.wasPressedThisFrame;
+            if (key == KeyCode.PageDown) return kb.pageDownKey.wasPressedThisFrame;
+            return false;
+#else
+            return false;
+#endif
+        }
+
+        /// <summary>Mouse wheel delta (used for rollback / backlog scroll).</summary>
+        public static float ScrollDelta()
+        {
+#if ENABLE_LEGACY_INPUT_MANAGER
+            return Input.mouseScrollDelta.y;
+#elif ENABLE_INPUT_SYSTEM
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            return mouse != null ? mouse.scroll.ReadValue().y : 0f;
+#else
+            return 0f;
+#endif
+        }
+
+        /// <summary>True on the frame any key goes down; outputs which one (for rebinding UI).</summary>
+        public static bool AnyKeyDown(out KeyCode key)
+        {
+#if ENABLE_LEGACY_INPUT_MANAGER
+            if (Input.anyKeyDown)
+            {
+                foreach (KeyCode k in System.Enum.GetValues(typeof(KeyCode)))
+                {
+                    if (k == KeyCode.None) continue;
+                    if (Input.GetKeyDown(k)) { key = k; return true; }
+                }
+            }
+            key = KeyCode.None;
+            return false;
+#else
+            key = KeyCode.None;
             return false;
 #endif
         }

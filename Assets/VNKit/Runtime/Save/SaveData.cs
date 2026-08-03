@@ -22,7 +22,7 @@ namespace VNKit
         public bool visible;
     }
 
-    //Все необходимое для возобновления игровой сессии. Сериализовано с помощью JsonUtility
+    /// <summary>Everything needed to resume a play session. Serialized with JsonUtility.</summary>
     [Serializable]
     public class VNSaveData
     {
@@ -31,6 +31,7 @@ namespace VNKit
         public int nextCommandIndex;
         public string background;
         public string bgm;
+        public string cg;          // currently visible event CG, if any
         public List<VNCharState> characters = new List<VNCharState>();
         public List<VNVariableEntry> variables = new List<VNVariableEntry>();
         public List<VNBacklogEntry> backlog = new List<VNBacklogEntry>();

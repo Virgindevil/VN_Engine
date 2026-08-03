@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace VNKit.EditorTools
 {
-    /// <summary>Импортирует файлы .vns как TextAssets, чтобы их можно было назначить движку в инспекторе.</summary>
+    /// <summary>Imports .vns files as TextAssets so they can be assigned to the engine in the Inspector.</summary>
     [ScriptedImporter(1, "vns")]
     public class VNScriptImporter : ScriptedImporter
     {
