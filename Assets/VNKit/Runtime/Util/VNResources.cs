@@ -19,7 +19,6 @@ namespace VNKit
     /// Mark assets Addressable with matching addresses (groups per category recommended
     /// for WebGL / mobile size control and remote catalogs).
     /// </summary>
-    
     public static class VNResources
     {
         static readonly Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();

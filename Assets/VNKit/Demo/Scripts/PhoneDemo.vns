@@ -1,0 +1,124 @@
+; ---------------------------------------------------------
+; VNKit 2.12 — Phone Gameplay API demo
+;   * @phonehub — free phone phase, released by the «Continue» button
+;   * @chatActions — contextual action buttons inside a chat
+;   * @msg id: — message states (message.<id>.received / .read / .answered)
+;   * @note / @schedule / @gallery — phone apps as gameplay tools
+;   * @phoneGame — mini-games framed as phone apps (stats → phoneGame.*)
+;   * @phoneapp — hide/show home screen apps
+;   * affection.rin / trust.rin — relationships via dotted variables
+; Enable "Use Placeholder Graphics" to run this without any art.
+; ---------------------------------------------------------
+
+# Start
+
+@bg Campus time:0.8
+@bgm ThemeDay fade:1.5
+@phoneOn
+@set affection.rin=0, trust.rin=0
+
+The school day is over. The phone in your pocket is heavier than usual —
+today it is not a toy, it is a tool.
+
+; --- Silent pre-fill: the chat already has history (notify:0 → no toast).
+; The second message carries id:rin_invite — its state is trackable:
+; message.rin_invite.received is 1 from this moment on.
+@msg chat:rin notify:0 from:"Rin" "You're coming to the roof today, right?"
+@msg chat:rin notify:0 id:rin_invite from:"Rin" "I dug up something about Elysium. Ask me when you have a minute."
+
+; --- Notes: the player reads them in the Notes app. star = important mark.
+@note add "Rin dug up something about «Elysium»." id:n1
+@note add "Buy coffee on the way back." id:n2
+@note star id:n2
+
+; --- Schedule: upcoming events with times.
+@schedule add time:"18:00" title:"Roof — meeting with Rin" id:ev1
+@schedule add time:"21:00" title:"Dorm curfew" id:ev2
+
+; --- Gallery: a photo with meta (sender / date / location / description / tag).
+@gallery add cg/roof_sky sender:"Rin" date:"May 12" location:"Roof" desc:"The sky from the roof — her photo." tag:rin important:1
+
+; --- Relationships are ordinary dotted variables — no new systems.
+; Contacts tab shows affection.<id> / trust.<id> once they are non-zero.
+@set affection.rin=1, trust.rin=1
+
+; --- Rin comes online with a pending LIVE dialogue (@online ... goto:).
+; And the chat gets CONTEXTUAL ACTIONS — buttons the player can tap while
+; the script is parked. "Ask about Elysium" appears only after the player
+; has READ the tracked message (message.rin_invite.read == true).
+@online chat:rin contact:"Rin 🌸" goto:RinTalk
+@chatActions chat:rin "Ask about Elysium" goto:AskElysium if:message.rin_invite.read == true do:affection.rin+=1 | "Send a sticker" goto:Sticker
+
+Rin's icon lights up online. The phone is yours: Chats, Contacts, Notes,
+Schedule, Gallery, Games.
+
+; --- FREE PHONE PHASE: the script waits here until the player presses
+; «Continue» on the chat list. Live dialogues and chat actions work inside.
+@phonehub
+
+; --- Back to the script. Branch on the MESSAGE STATE:
+; did the player answer Rin's tracked message (via the live dialogue
+; or an action — any outgoing bubble counts)?
+@if message.rin_invite.answered == true goto:WasAnswered
+You never answered Rin's message. She will remember that.
+@goto AfterHub
+
+# WasAnswered
+Rin got her answer. That matters to her.
+@set trust.rin+=1
+
+# AfterHub
+
+; --- Reactive messaging: the follow-up depends on the relationship value.
+@if affection.rin >= 2 goto:LikesYou
+@msg chat:rin from:"Rin" "You could at least pretend to be interested."
+@goto DemoEnd
+
+# LikesYou
+@msg chat:rin from:"Rin" "…thanks for listening. Really."
+
+# DemoEnd
+
+; --- @phoneGame: a mini-game as a phone app. Stats land in
+; phoneGame.Lockpick.plays / .last; var: works like @minigame.
+The old storage room door has a padlock. Like an app on your phone,
+the lockpick game opens full-screen.
+@phoneGame Lockpick var:lockResult
+@if lockResult == 1 goto:Won
+The pick broke. (phoneGame.Lockpick.last = 0 — the Games tab remembers.)
+@goto WrapUp
+
+# Won
+Unlocked! (phoneGame.Lockpick.plays grew too.)
+
+# WrapUp
+
+; --- @phoneapp hides/shows home screen apps.
+@phoneapp games off
+The Games app vanishes from the home screen…
+@phoneapp games on
+…and it is back.
+
+The demo is over. Everything you saw — notes, schedule, gallery,
+chat actions, message states, phone games — lives in the save file
+and survives rollback.
+
+@phoneOff
+@end
+
+; ---------------------------------------------------------
+# RinTalk
+Rin: You're here!
+Rin: So — the roof at six. Don't be late.
+{playerName}: I'll be there, promise.
+@chatend
+
+# AskElysium
+Rin: Oh, so you read that. Look — the archive mentions a program
+Rin: called «Elysium». I'll send you the photo tonight.
+@chatend
+
+# Sticker
+{playerName}: [sticker]
+Rin: lol
+@chatend

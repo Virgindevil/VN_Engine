@@ -51,7 +51,24 @@ namespace VNKit
                     ? ParseCommand(line.Substring(1), i + 1, line)
                     : ParseDialogue(line, i + 1);
 
-                if (cmd != null) script.Commands.Add(cmd);
+                if (cmd != null)
+                {
+                    // Two-line dialogue style ("Макс:" on one line, the text on the next):
+                    // a speaker-only Say absorbs the narration line that follows it.
+                    if (cmd.Type == VNCommandType.Say && string.IsNullOrEmpty(cmd.Speaker)
+                        && cmd.Text.Length > 0 && script.Commands.Count > 0
+                        && !script.Labels.ContainsValue(script.Commands.Count))
+                    {
+                        var prev = script.Commands[script.Commands.Count - 1];
+                        if (prev.Type == VNCommandType.Say && !string.IsNullOrEmpty(prev.Speaker)
+                            && prev.Text.Length == 0)
+                        {
+                            prev.Text = cmd.Text;
+                            continue;
+                        }
+                    }
+                    script.Commands.Add(cmd);
+                }
             }
             return script;
         }
@@ -122,6 +139,30 @@ namespace VNKit
                 case "stopVoice": cmd.Type = VNCommandType.StopVoice;  FillParams(cmd, tokens); break;
                 case "cg":        cmd.Type = VNCommandType.Cg;         FillPositional(cmd, tokens); break;
                 case "minigame":  cmd.Type = VNCommandType.Minigame;   FillPositional(cmd, tokens); break;
+                case "input":     cmd.Type = VNCommandType.Input;      FillPositional(cmd, tokens); break;
+                case "phone":     cmd.Type = VNCommandType.Phone;      FillPositional(cmd, tokens); break;
+                case "photo":     cmd.Type = VNCommandType.Photo;      FillPositional(cmd, tokens); break;
+                case "msg":       cmd.Type = VNCommandType.PhoneMsg;   FillPositional(cmd, tokens); break;
+                case "chat":      cmd.Type = VNCommandType.ChatTarget; FillPositional(cmd, tokens); break;
+                // @phoneOn / @phoneOff — switch the in-game menu style at runtime:
+                // phone menu (RMB/Esc → смартфон) vs the classic box menu.
+                case "phoneOn":   cmd.Type = VNCommandType.PhoneMenuToggle; cmd.Name = "on";  break;
+                case "phoneOff":  cmd.Type = VNCommandType.PhoneMenuToggle; cmd.Name = "off"; break;
+                // @waitchat max,exes — park the script until those chats' live
+                // dialogues (@online ... goto:Label) are finished.
+                case "waitchat":  cmd.Type = VNCommandType.WaitChat; FillPositional(cmd, tokens); break;
+                // @chatend [goto:Label] — finish the current chat dialogue and
+                // return to the @waitchat hub (or jump to Label).
+                case "chatend":   cmd.Type = VNCommandType.ChatEnd;  FillPositional(cmd, tokens); break;
+                // @online = the contact comes online and the live chat begins
+                // (alias of @phone open); @offline ends it (= @phone close).
+                case "online":    cmd.Type = VNCommandType.Phone;      FillPositional(cmd, tokens);
+                                  if (string.IsNullOrEmpty(cmd.Name)) cmd.Name = "open"; break;
+                case "offline":   cmd.Type = VNCommandType.Phone;      FillPositional(cmd, tokens);
+                                  if (string.IsNullOrEmpty(cmd.Name)) cmd.Name = "close"; break;
+                case "typing":    cmd.Type = VNCommandType.Typing;     FillPositional(cmd, tokens); break;
+                case "fadeOut":   cmd.Type = VNCommandType.Fade;       FillPositional(cmd, tokens); cmd.Params["dir"] = "out"; break;
+                case "fadeIn":    cmd.Type = VNCommandType.Fade;       FillPositional(cmd, tokens); cmd.Params["dir"] = "in"; break;
                 case "wait":      cmd.Type = VNCommandType.Wait;       FillPositional(cmd, tokens); break;
                 case "end":       cmd.Type = VNCommandType.End;        break;
 
@@ -137,7 +178,7 @@ namespace VNKit
 
                 case "if":
                     cmd.Type = VNCommandType.If;
-                    ParseIf(cmd, tokens);
+                    ParseIf(cmd, body, name);
                     break;
 
                 case "choice":
@@ -183,36 +224,92 @@ namespace VNKit
             }
         }
 
-        static void ParseIf(VNCommand cmd, List<string> tokens)
+        /// <summary>
+        /// Parses "@if &lt;expr&gt; goto:X else:Y" from the RAW body (not from split tokens),
+        /// so quoted string literals inside the expression keep their quotes:
+        /// @if playerName=="" goto:DefaultName — works, "" stays a string literal.
+        /// </summary>
+        static void ParseIf(VNCommand cmd, string body, string name)
         {
-            var exprTokens = new List<string>();
-            for (int i = 1; i < tokens.Count; i++)
-            {
-                string t = tokens[i];
-                if (t.StartsWith("goto:")) cmd.GotoLabel = t.Substring(5);
-                else if (t.StartsWith("else:")) cmd.ElseLabel = t.Substring(5);
-                else exprTokens.Add(t);
-            }
-            cmd.Expression = string.Join(" ", exprTokens.ToArray());
+            string rest = body.Length > name.Length ? body.Substring(name.Length).Trim() : "";
+
+            int gotoIdx = FindKeywordOutsideQuotes(rest, "goto:");
+            if (gotoIdx < 0) { cmd.Expression = rest; return; }
+
+            cmd.Expression = rest.Substring(0, gotoIdx).Trim();
+            cmd.GotoLabel = ReadWord(rest, gotoIdx + 5);
+
+            int elseIdx = FindKeywordOutsideQuotes(rest, "else:");
+            if (elseIdx > gotoIdx)
+                cmd.ElseLabel = ReadWord(rest, elseIdx + 5);
         }
 
+        /// <summary>Finds "key:" at start or after whitespace, outside of quoted sections.</summary>
+        static int FindKeywordOutsideQuotes(string s, string keyword)
+        {
+            bool quoted = false;
+            for (int i = 0; i + keyword.Length <= s.Length; i++)
+            {
+                char c = s[i];
+                if (c == '"') { quoted = !quoted; continue; }
+                if (quoted) continue;
+                if (i > 0 && !char.IsWhiteSpace(s[i - 1])) continue;
+                if (string.CompareOrdinal(s, i, keyword, 0, keyword.Length) == 0) return i;
+            }
+            return -1;
+        }
+
+        /// <summary>Reads a non-whitespace word starting at index i.</summary>
+        static string ReadWord(string s, int i)
+        {
+            int end = i;
+            while (end < s.Length && !char.IsWhiteSpace(s[end])) end++;
+            return s.Substring(i, end - i);
+        }
+
+        /// <summary>
+        /// Parses "@choice "Text" goto:X if:expr do:assign | ..." from raw text,
+        /// keyword positions are found OUTSIDE quoted sections — so string literals
+        /// in conditions/assignments keep their quotes (if:playerSex=="male",
+        /// do:mood="happy") and a choice text may itself contain " goto:" in quotes.
+        /// </summary>
         static void ParseChoice(VNCommand cmd, string remainder)
         {
             cmd.Options = new List<VNChoiceOption>();
-            foreach (string part in SplitRespectingQuotes(remainder, '|'))
+            foreach (string part0 in SplitRespectingQuotes(remainder, '|'))
             {
-                var tokens = SplitTokens(part.Trim());
-                if (tokens.Count == 0) continue;
-                var opt = new VNChoiceOption { Text = tokens[0] };
-                for (int i = 1; i < tokens.Count; i++)
-                {
-                    string t = tokens[i];
-                    if (t.StartsWith("goto:")) opt.GotoLabel = t.Substring(5);
-                    else if (t.StartsWith("if:")) opt.Condition = t.Substring(3);
-                    else if (t.StartsWith("do:")) opt.DoAssign = t.Substring(3);
-                }
+                string part = part0.Trim();
+                if (part.Length == 0) continue;
+
+                var opt = new VNChoiceOption();
+                int gt = FindKeywordOutsideQuotes(part, "goto:");
+                int ic = FindKeywordOutsideQuotes(part, "if:");
+                int dc = FindKeywordOutsideQuotes(part, "do:");
+
+                int cut = part.Length;
+                if (gt >= 0 && gt < cut) cut = gt;
+                if (ic >= 0 && ic < cut) cut = ic;
+                if (dc >= 0 && dc < cut) cut = dc;
+
+                opt.Text = part.Substring(0, cut).Trim();
+                if (opt.Text.Length >= 2 && opt.Text[0] == '"' && opt.Text[opt.Text.Length - 1] == '"')
+                    opt.Text = opt.Text.Substring(1, opt.Text.Length - 2);
+
+                if (gt >= 0) opt.GotoLabel = ReadWord(part, gt + 5);
+                if (ic >= 0) opt.Condition = ReadParamValue(part, ic + 3, gt, dc);
+                if (dc >= 0) opt.DoAssign = ReadParamValue(part, dc + 3, gt, ic);
+
                 cmd.Options.Add(opt);
             }
+        }
+
+        /// <summary>Reads a parameter value (expression/assignments) up to the next keyword or end.</summary>
+        static string ReadParamValue(string s, int start, int other1, int other2)
+        {
+            int end = s.Length;
+            if (other1 > start && other1 < end) end = other1;
+            if (other2 > start && other2 < end) end = other2;
+            return s.Substring(start, end - start).Trim();
         }
 
         static bool IsKey(string s)

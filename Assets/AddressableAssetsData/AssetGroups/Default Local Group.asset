@@ -22,6 +22,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 16ea1997f56ab5d4e8d302c8b3be6c0f
+    m_Address: VN/CG/rin/selfie1
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 296b5042e04d5ae49862d38248d7f6da
     m_Address: VN/Audio/SFX/Chime
     m_ReadOnly: 0
@@ -59,6 +64,11 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: df7f2146b6fcfab4b9c6e4f62843ff11
     m_Address: VN/Backgrounds/Night
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ea607e5d96388324581464cd0fa58f88
+    m_Address: VN/CG/rin/selfie2
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

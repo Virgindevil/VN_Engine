@@ -52,6 +52,8 @@ namespace VNKit
             return b;
         }
 
+        public bool IsVisible { get { return root.activeSelf; } }
+
         public void SetVisible(bool visible)
         {
             root.SetActive(visible);

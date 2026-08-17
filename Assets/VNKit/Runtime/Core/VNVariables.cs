@@ -24,6 +24,26 @@ namespace VNKit
         public string GetString(string name) { return Get(name).ToText(); }
         public bool GetBool(string name) { return Get(name).ToBool(); }
 
+        static readonly System.Text.RegularExpressions.Regex varRef =
+            new System.Text.RegularExpressions.Regex(@"\{([A-Za-z_][A-Za-z0-9_]*)\}",
+                System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        /// <summary>
+        /// Expands {variable} references inside script text: "Hi, {playerName}!".
+        /// Unknown variables expand to an empty string. Double the braces
+        /// ("{{" / "}}") to print them literally.
+        /// </summary>
+        public string Expand(string text)
+        {
+            if (string.IsNullOrEmpty(text) || text.IndexOf('{') < 0) return text;
+            text = text.Replace("{{", "\u0001").Replace("}}", "\u0002");
+            text = varRef.Replace(text, delegate (System.Text.RegularExpressions.Match m)
+            {
+                return map.ContainsKey(m.Groups[1].Value) ? GetString(m.Groups[1].Value) : "";
+            });
+            return text.Replace("\u0001", "{").Replace("\u0002", "}");
+        }
+
         public void Set(string name, VNValue value)
         {
             map[name] = value;

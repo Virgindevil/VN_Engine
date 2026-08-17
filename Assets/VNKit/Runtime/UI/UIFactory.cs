@@ -59,6 +59,62 @@ namespace VNKit
         static string dynamicFallbackLang;
         static bool fontCoverageWarned;
 
+        // ---------------- Emoji fallback (Segoe UI Emoji / Noto / Apple) ----------------
+
+        /// <summary>
+        /// Set from VisualNovelEngine.useOsEmojiFont at boot. When false (user renders
+        /// emoji through a color TMP Sprite Asset), the monochrome OS emoji font is
+        /// skipped entirely — font fallbacks are searched before sprite assets, so
+        /// keeping it would shadow the color sprites.
+        /// </summary>
+        public static bool UseOsEmojiFont = true;
+
+        static TMP_FontAsset emojiFallback;
+        static bool emojiFallbackTried;
+        static readonly string[] EmojiFontCandidates =
+            { "seguiemj", "seguisym", "notocoloremoji", "notoemoji", "applecoloremoji", "openmoji", "twemoji" };
+
+        /// <summary>
+        /// Emoji (🐶, 😂, …) live in dedicated OS fonts, not in text fonts. Build a dynamic
+        /// TMP asset from the OS emoji font once and chain it AFTER the language fallback,
+        /// so per-character lookup flows: theme font → language fallback → emoji font.
+        /// Never throws; when no emoji font exists, emoji simply render as □ as before.
+        /// </summary>
+        static void EnsureEmojiFallback(TMP_FontAsset target)
+        {
+            if (!UseOsEmojiFont) return;
+            if (!emojiFallbackTried)
+            {
+                emojiFallbackTried = true;
+                try
+                {
+                    Font osFont = CreateOSFontFromFile(EmojiFontCandidates);
+                    if (osFont != null)
+                    {
+                        emojiFallback = TMP_FontAsset.CreateFontAsset(osFont);
+                        if (emojiFallback != null)
+                        {
+                            emojiFallback.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+                            Debug.Log("[VNKit] Emoji OS font ready: " + osFont.name +
+                                " — used only for characters missing from the primary font");
+                        }
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning("[VNKit] Emoji font setup failed: " + e.Message);
+                    emojiFallback = null;
+                }
+            }
+            if (emojiFallback == null) return;
+            var host = dynamicFallback != null ? dynamicFallback : target;
+            if (host == null || host == emojiFallback) return;
+            if (host.fallbackFontAssetTable == null)
+                host.fallbackFontAssetTable = new List<TMP_FontAsset>();
+            if (!host.fallbackFontAssetTable.Contains(emojiFallback))
+                host.fallbackFontAssetTable.Add(emojiFallback);
+        }
+
         /// <summary>OS font candidates per language group; first installed match wins.</summary>
         static string[] CandidatesForLanguage(string lang)
         {
@@ -341,6 +397,7 @@ namespace VNKit
             var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
             var font = DefaultTMPFont;
             EnsureDynamicFallback(font);
+            EnsureEmojiFallback(font);
             // Если основной шрифт не покрывает активный язык — назначаем системный
             // шрифт ОСНОВНЫМ, а не fallback'ом: TMP кэширует промахи fallback-поиска,
             // и символы, однажды не найденные до подключения fallback, навсегда

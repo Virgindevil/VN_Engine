@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VNKit
 {
-    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, WaitingMinigame, Ended }
+    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, WaitingMinigame, WaitingTextInput, WaitingChatEnter, WaitingChat, Ended }
 
     [Serializable]
     public class VNSettings
@@ -31,6 +31,8 @@ namespace VNKit
         [Tooltip("Hold to skip text")] public KeyCode skipKey = KeyCode.LeftControl;
         [Tooltip("Toggle auto mode")] public KeyCode autoKey = KeyCode.A;
         [Tooltip("Rollback one line")] public KeyCode rollbackKey = KeyCode.PageUp;
+        [Tooltip("Hide the dialogue UI (with the phone menu enabled, RMB opens the phone instead)")]
+        public KeyCode hideKey = KeyCode.H;
     }
 
     [Serializable]
@@ -42,6 +44,7 @@ namespace VNKit
 
     public static class VNLog
     {
+        public static void Log(string msg) { Debug.Log("[VNKit] " + msg); }
         public static void Warn(string msg) { Debug.LogWarning("[VNKit] " + msg); }
         public static void Error(string msg) { Debug.LogError("[VNKit] " + msg); }
     }

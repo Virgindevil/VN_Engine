@@ -20,6 +20,16 @@ namespace VNKit
             public string bgm;
             public string cg;
             public List<VNCharState> characters;
+            public bool phoneOpen;
+            public string phoneChat;                     // active chat id
+            public string phonePos;
+            // Append-only messenger history is stored as per-chat message counts;
+            // rollback truncates each chat back to its count at the snapshot point.
+            public Dictionary<string, VNPhoneChatSnap> phoneChatStates;
+            public bool phoneChatMode;                   // 2.8 chat mode flag
+            public bool phoneMenuActive;                 // 2.9 menu style (@phoneOn/@phoneOff)
+            public List<VNChatDialogue> phoneDialogues;  // 2.11 live chat dialogues
+            public int chatHubReturn;                    // 2.11 @waitchat hub position
         }
 
         readonly List<Snapshot> stack = new List<Snapshot>();

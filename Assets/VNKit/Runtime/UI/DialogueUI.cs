@@ -42,7 +42,12 @@ namespace VNKit
             panelImg.raycastTarget = true;
             var advance = panel.gameObject.AddComponent<Button>();
             advance.transition = Selectable.Transition.None;
-            advance.onClick.AddListener(delegate { if (engine.Player != null) engine.Player.Advance(); });
+            advance.onClick.AddListener(delegate
+            {
+                // The panel button bypasses the engine's Update() gating, so it must
+                // respect modal screens itself (phone menu, settings, save/load...).
+                if (engine.Player != null && !engine.IsModalOpen()) engine.Player.Advance();
+            });
 
             // Message text
             messageText = UIFactory.Text(panel, "Message", "", msgSize, TextAnchor.UpperLeft, UIFactory.TextColor);

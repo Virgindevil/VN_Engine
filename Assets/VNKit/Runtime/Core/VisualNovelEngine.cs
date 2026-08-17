@@ -37,6 +37,30 @@ namespace VNKit
         public bool usePlaceholderGraphics = false;
         public Color dialoguePanelColor = new Color(0f, 0f, 0f, 0.72f);
         public Color accentColor = new Color(0.85f, 0.45f, 0.65f, 1f);
+        [Tooltip("Build a monochrome emoji fallback from the OS emoji font. Turn OFF when you use a color TMP Sprite Asset for emoji (font fallbacks are searched before sprite assets).")]
+        public bool useOsEmojiFont = true;
+
+        [Header("Phone UI")]
+        [Tooltip("Start the game with the phone as the in-game menu (RMB / Esc → смартфон). OFF = classic box menu. The script can switch anytime: @phoneOn / @phoneOff.")]
+        public bool usePhoneMenu = false;
+        [Tooltip("Custom phone body sprite (e.g. a hand holding a phone). Leave empty for the procedural flat design.")]
+        public Sprite phoneSkin;
+        [Tooltip("Phone body sprite for a male protagonist (hand with phone). Overrides Phone Skin when the sex variable says 'male'. Leave empty to always use Phone Skin.")]
+        public Sprite phoneSkinMale;
+        [Tooltip("Phone body sprite for a female protagonist (hand with phone). Overrides Phone Skin when the sex variable says 'female'. Leave empty to always use Phone Skin.")]
+        public Sprite phoneSkinFemale;
+        [Tooltip("Engine variable holding the protagonist's sex ('male'/'female'). The phone skin is picked from it.")]
+        public string playerSexVariable = "playerSex";
+        [Tooltip("Phone frame size in reference pixels; with a skin sprite the height follows the sprite aspect (width is kept).")]
+        public Vector2 phoneSize = new Vector2(470f, 900f);
+        [Tooltip("Normalized (0..1) chat-screen area inside the phone skin sprite — the messenger UI is drawn there.")]
+        public Rect phoneScreenRect = new Rect(0.06f, 0.09f, 0.88f, 0.82f);
+        [Tooltip("Priority tracking per chat: a chat that received a message awaits the player's reply; replying in chat X grants X answerPoints and every other awaiting chat gets ignorePoints. Points land in the given engine variable.")]
+        public List<VNChatPriority> chatPriorities = new List<VNChatPriority>();
+
+        [Header("Memories (gallery scene replay)")]
+        [Tooltip("Unlocked CGs listed here get a replay button in the main-menu gallery: clicking jumps to the given script label.")]
+        public List<VNMemoryEntry> memories = new List<VNMemoryEntry>();
 
         [Header("Loading")]
         [Tooltip("Show a full-screen loading overlay while Addressables initializes at boot.")]
@@ -76,9 +100,17 @@ namespace VNKit
         public SaveLoadUI SaveLoadPanel { get; private set; }
         public SettingsUI SettingsPanel { get; private set; }
         public CGGalleryUI GalleryPanel { get; private set; }
+        public InputUI TextInputPanel { get; private set; }
+        public PhoneUI Phone { get; private set; }
+        public PhotoViewerUI PhotoViewer { get; private set; }
         public TitleUI Title { get; private set; }
         public QuickMenuUI QuickMenu { get; private set; }
         public LoadingUI Loading { get; private set; }
+        public PauseMenuUI PauseMenu { get; private set; }
+        /// <summary>Current in-game menu style: true = phone menu, false = classic
+        /// box menu. Starts from usePhoneMenu; @phoneOn/@phoneOff switch it at runtime.</summary>
+        public bool PhoneMenuActive { get { return phoneMenuActive; } }
+        bool phoneMenuActive;
 
         /// <summary>Handle unknown @commands here (cmd.Name = command name, cmd.Params = params).</summary>
         public event Action<VNCommand> CustomCommand;
@@ -93,10 +125,13 @@ namespace VNKit
         readonly HashSet<string> seenLines = new HashSet<string>();
         readonly HashSet<string> unlockedCgs = new HashSet<string>();
         readonly VNRollback rollback = new VNRollback();
+        UnityEngine.UI.Image fadeImage;
+        Coroutine fadeRoutine;
         VNMinigame activeMinigame;
         bool hudHidden;
         bool booted;
         bool suppressRollbackCapture;
+        bool rollingBack;   // a RollbackRoutine is in flight — block further rollback input
 
         const int BacklogCapacity = 100;
         const string SettingsKey = "VNKit.Settings";
@@ -122,6 +157,7 @@ namespace VNKit
 
             VNLoc.Language = Settings.language;
             UIFactory.Theme = uiTheme;
+            UIFactory.UseOsEmojiFont = useOsEmojiFont;
 
             Variables = new VNVariables();
             Storage = new SaveLoadManager();
@@ -135,6 +171,13 @@ namespace VNKit
             Characters = new CharacterManager(stageRoot, this);
             Cgs = new CgManager(stageRoot, this); // above characters, under the UI overlay
 
+            // Full-screen fade layer (@fadeOut/@fadeIn): above the scene, under the UI overlay,
+            // so narration text stays readable on the black screen.
+            var fadeRT = UIFactory.Rect("FadeLayer", canvas.transform);
+            UIFactory.Stretch(fadeRT);
+            fadeImage = UIFactory.AddImage(fadeRT.gameObject, new Color(0f, 0f, 0f, 0f));
+            fadeImage.raycastTarget = false;
+
             var overlayRT = UIFactory.Rect("Overlay", canvas.transform);
             UIFactory.Stretch(overlayRT);
             overlayRoot = overlayRT;
@@ -145,8 +188,16 @@ namespace VNKit
             SaveLoadPanel = new SaveLoadUI(overlayRT, this);
             SettingsPanel = new SettingsUI(overlayRT, this);
             GalleryPanel = new CGGalleryUI(overlayRT, this);
+            TextInputPanel = new InputUI(overlayRT, this);
+            Phone = new PhoneUI(overlayRT, this);
+            Phone.Opened += OnPhoneOpened;
+            Phone.Closed += OnPhoneClosed;
+            Phone.MenuClosed += OnPhoneMenuClosed;
+            PhotoViewer = new PhotoViewerUI(overlayRT);
+            PauseMenu = new PauseMenuUI(overlayRT, this);
             Title = new TitleUI(overlayRT, this);
             Loading = new LoadingUI(overlayRT, gameTitle);
+            phoneMenuActive = usePhoneMenu;
 
             Audio = new VNAudioManager(transform, this);
             Player = new ScriptPlayer(this, VNRunner.Create("VNKit.Player", transform));
@@ -264,20 +315,46 @@ namespace VNKit
                 return;
             }
 
+            // While a text input (@input) is open, every hotkey belongs to the
+            // input field — typing 'a' must not toggle auto-mode etc.
+            if (Player.State == PlayerState.WaitingTextInput)
+            {
+                Player.SetSkipHeld(false);
+                return;
+            }
+
             if (VNInput.CancelPressed())
             {
                 if (SettingsPanel.IsOpen) SettingsPanel.Hide();
                 else if (GalleryPanel.IsOpen) GalleryPanel.Hide();
                 else if (BacklogPanel.IsOpen) BacklogPanel.Hide();
                 else if (SaveLoadPanel.IsOpen) SaveLoadPanel.Hide();
-                else if (!Title.IsOpen && Player.State != PlayerState.Idle && Player.State != PlayerState.Ended) OpenSettings();
+                else if (PhotoViewer != null && PhotoViewer.IsOpen) PhotoViewer.Hide();
+                else if (Phone != null && Phone.IsMenuOpen) Phone.CloseMenu();
+                else if (PauseMenu != null && PauseMenu.IsOpen) PauseMenu.Hide();
+                else if (!Title.IsOpen && Player.State != PlayerState.Idle && Player.State != PlayerState.Ended)
+                    ToggleInGameMenu();
+                return;
+            }
+
+            // RMB toggles the in-game menu: the phone (when phoneMenuActive or a
+            // chat-mode conversation is running) or the classic box menu.
+            // Works around the modal freeze below, so it also closes the menu.
+            if (VNInput.HidePressed() && !Title.IsOpen)
+            {
+                ToggleInGameMenu();
                 return;
             }
 
             bool modal = IsModalOpen();
+            // 2.8 chat mode: the phone menu IS the dialogue UI. While it is open the
+            // game keeps running — clicks on the phone body advance, Ctrl skips,
+            // and every scripted conversation plays inside the Chats tab.
+            bool chatUi = Phone != null && Phone.ChatMode && Phone.IsMenuOpen;
             // While any modal (Settings / Save / Load / Backlog / Gallery) or the title is open,
             // freeze advance / auto / skip so text does not progress behind the panel.
-            if (modal || Title.IsOpen)
+            // Blocking panels freeze even in chat mode (they sit above the phone).
+            if (IsBlockingModalOpen() || (modal && !chatUi) || Title.IsOpen)
             {
                 Player.SetSkipHeld(false);
                 return;
@@ -291,7 +368,7 @@ namespace VNKit
                 ToggleAuto();
 
             // Rollback: mouse wheel up or the rollback hotkey, while waiting on a finished line.
-            if (enableRollback && !hudHidden
+            if (enableRollback && !hudHidden && !rollingBack && !IsModalOpen()
                 && Player.State == PlayerState.WaitingInput && !Player.IsTyping
                 && (VNInput.ScrollDelta() > 0.1f || VNInput.KeyPressed(Settings.rollbackKey)))
             {
@@ -299,13 +376,14 @@ namespace VNKit
                 return;
             }
 
-            if (VNInput.HidePressed()) ToggleHud();
+            if (VNInput.KeyPressed(Settings.hideKey)) ToggleHud();
             else if (!hudHidden
+                     && (!IsModalOpen() || chatUi)
                      && Player.State != PlayerState.WaitingChoice
                      && Player.State != PlayerState.Idle
                      && Player.State != PlayerState.Ended
                      && VNInput.AdvancePressed()
-                     && !VNInput.PointerOverUI())
+                     && !VNInput.PointerOverUI(chatUi || (Phone != null && !Phone.IsMenuOpen) ? Phone.Root : null))
                 Player.Advance();
 
             Player.Tick(Time.deltaTime);
@@ -313,18 +391,196 @@ namespace VNKit
 
         public bool IsModalOpen()
         {
-            return BacklogPanel.IsOpen || SaveLoadPanel.IsOpen || SettingsPanel.IsOpen || GalleryPanel.IsOpen;
+            return BacklogPanel.IsOpen || SaveLoadPanel.IsOpen || SettingsPanel.IsOpen || GalleryPanel.IsOpen
+                || (PhotoViewer != null && PhotoViewer.IsOpen)
+                || (Phone != null && Phone.IsMenuOpen)
+                || (PauseMenu != null && PauseMenu.IsOpen);
         }
+
+        /// <summary>Open/close the in-game menu: the phone (when phoneMenuActive or a
+        /// chat-mode conversation is running) or the classic box menu.</summary>
+        void ToggleInGameMenu()
+        {
+            if (Phone != null && Phone.IsMenuOpen) { Phone.CloseMenu(); return; }
+            if (PauseMenu != null && PauseMenu.IsOpen) { PauseMenu.Hide(); return; }
+            if (IsModalOpen()) return;
+            if (Player.State == PlayerState.Idle || Player.State == PlayerState.Ended) return;
+            if (Phone != null && (phoneMenuActive || Phone.ChatMode)) Phone.OpenMenu();
+            else if (PauseMenu != null) PauseMenu.Show();
+        }
+
+        /// <summary>@phoneOn / @phoneOff — switch the in-game menu style at runtime.
+        /// The messenger itself (@online/@msg/@chat) works in both modes.</summary>
+        public void SetPhoneMenu(bool on)
+        {
+            phoneMenuActive = on;
+            if (on)
+            {
+                if (PauseMenu != null) PauseMenu.Hide();
+            }
+            else
+            {
+                // Chat mode keeps the phone (it is the dialogue UI); a plain
+                // player-opened phone menu is closed when the style switches.
+                if (Phone != null && Phone.IsMenuOpen && !Phone.ChatMode) Phone.CloseMenu();
+            }
+        }
+
+        /// <summary>Pick the phone skin for the current protagonist: the male/female
+        /// variant by the playerSexVariable value, falling back to phoneSkin.</summary>
+        public Sprite GetPhoneSkin()
+        {
+            string sex = Variables != null && !string.IsNullOrEmpty(playerSexVariable)
+                ? Variables.GetString(playerSexVariable) : null;
+            if (!string.IsNullOrEmpty(sex))
+            {
+                if (IsFemaleSexValue(sex) && phoneSkinFemale != null) return phoneSkinFemale;
+                if (IsMaleSexValue(sex) && phoneSkinMale != null) return phoneSkinMale;
+            }
+            return phoneSkin;
+        }
+
+        /// <summary>Recognized female values of the sex variable (case-insensitive).</summary>
+        public static bool IsFemaleSexValue(string v)
+        {
+            if (v == null) return false;
+            switch (v.Trim().ToLowerInvariant())
+            {
+                case "female": case "f": case "woman": case "girl":
+                case "женщина": case "женский": case "ж": case "девушка":
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>Recognized male values of the sex variable (case-insensitive).</summary>
+        public static bool IsMaleSexValue(string v)
+        {
+            if (v == null) return false;
+            switch (v.Trim().ToLowerInvariant())
+            {
+                case "male": case "m": case "man": case "boy":
+                case "мужчина": case "мужской": case "м": case "парень":
+                    return true;
+            }
+            return false;
+        }
+
+        public bool HudHidden { get { return hudHidden; } }
 
         public void ToggleHud()
         {
             if (Title.IsOpen || IsModalOpen()) return;
             hudHidden = !hudHidden;
+            dialogueHiddenByPhone = false;
             Dialogue.SetHudVisible(!hudHidden);
-            QuickMenu.SetVisible(!hudHidden);
         }
 
         // ============================== Game flow ==============================
+
+        /// <summary>Screen fade (@fadeOut/@fadeIn). Non-blocking: the script keeps running.</summary>
+        public void FadeScreen(bool toBlack, float time)
+        {
+            if (fadeImage == null) return;
+            if (fadeRoutine != null) StopCoroutine(fadeRoutine);
+            fadeRoutine = StartCoroutine(FadeRoutine(toBlack ? 1f : 0f, Mathf.Max(0.01f, time)));
+        }
+
+        IEnumerator FadeRoutine(float target, float duration)
+        {
+            float from = fadeImage.color.a;
+            float t = 0f;
+            while (t < duration)
+            {
+                t += Time.unscaledDeltaTime;
+                float a = Mathf.Lerp(from, target, Mathf.Clamp01(t / duration));
+                fadeImage.color = new Color(0f, 0f, 0f, a);
+                yield return null;
+            }
+            fadeImage.color = new Color(0f, 0f, 0f, target);
+            fadeRoutine = null;
+        }
+
+        // ============================== Phone overlay ==============================
+
+        bool dialogueHiddenByPhone;
+
+        /// <summary>Open the full-screen photo viewer (phone chat attachments).</summary>
+        public void ShowPhotoViewer(Sprite s) { if (PhotoViewer != null) PhotoViewer.Show(s); }
+
+        /// <summary>Memory entry bound to a CG, if any (gallery scene replay).</summary>
+        public VNMemoryEntry GetMemory(string cgName)
+        {
+            if (memories == null) return null;
+            foreach (var m in memories)
+                if (m != null && m.cg == cgName && !string.IsNullOrEmpty(m.script)) return m;
+            return null;
+        }
+
+        /// <summary>Replay a scene from the gallery: jump straight to script.label.</summary>
+        public void StartMemory(string scriptName, string label)
+        {
+            var s = GetScript(scriptName);
+            int idx;
+            if (s == null || !s.Labels.TryGetValue(label ?? "", out idx))
+            {
+                VNLog.Warn("Memory target not found: " + scriptName + "." + label);
+                return;
+            }
+            Title.Hide();
+            HideAllPanels();
+            Choice.Hide();
+            rollingBack = false;
+            rollback.Clear();
+            if (Phone != null) Phone.CloseMenu();
+            Player.Stop();
+            hudHidden = false;
+            Dialogue.SetHudVisible(true);
+            Dialogue.Hide();
+            QuickMenu.SetVisible(false); // quick menu row is retired: menus live in the phone / pause menu
+            suppressRollbackCapture = true;
+            Player.Play(s, idx);
+        }
+
+        /// <summary>Phone opened: the dialogue panel hides behind the messenger —
+        /// the conversation lives inside the phone now. (A narration line will
+        /// re-show the panel by itself; the panel returns on phone close.)</summary>
+        void OnPhoneOpened()
+        {
+            if (!hudHidden && Dialogue != null && Dialogue.IsOpen)
+            {
+                Dialogue.SetHudVisible(false);
+                dialogueHiddenByPhone = true;
+            }
+        }
+
+        /// <summary>Phone closed (@offline): bring the dialogue panel back.</summary>
+        void OnPhoneClosed()
+        {
+            if (!dialogueHiddenByPhone) return;
+            dialogueHiddenByPhone = false;
+            if (!hudHidden && Dialogue != null) Dialogue.SetHudVisible(true);
+        }
+
+        /// <summary>Player put the phone away (menu closed). If the script is parked
+        /// at a @waitchat hub with unfinished live dialogues, show the reminder
+        /// phrase defined by the script (@waitchat ... remind:"...").</summary>
+        void OnPhoneMenuClosed()
+        {
+            if (Player == null || Phone == null || Dialogue == null) return;
+            if (Player.State != PlayerState.WaitingChat) return;
+            string r = Player.ChatReminder;
+            if (string.IsNullOrEmpty(r)) return;
+            bool anyPending = false;
+            foreach (var d in Phone.GetDialogues())
+                if (!d.done) { anyPending = true; break; }
+            if (!anyPending) return;
+            if (!hudHidden)
+            {
+                Dialogue.PlayLine(null, r, null);
+                Dialogue.CompleteLine(); // instant — this is a hint, not a script line
+            }
+        }
 
         public void StartNewGame()
         {
@@ -335,17 +591,21 @@ namespace VNKit
             Variables.Clear();
             ClearBacklog();
             rollback.Clear();
+            rollingBack = false;
             Player.Stop();
             Audio.StopBgm(0.25f);
             Audio.StopVoice();
             Characters.ClearAll();
             Backgrounds.Clear(0f);
             Cgs.Hide(0f);
+            if (Phone != null) Phone.ResetAll();
+            if (fadeImage != null) fadeImage.color = new Color(0f, 0f, 0f, 0f);
 
+            phoneMenuActive = usePhoneMenu; // menu style resets to the initial one
             hudHidden = false;
             Dialogue.SetHudVisible(true);
             Dialogue.Hide();
-            QuickMenu.SetVisible(true);
+            QuickMenu.SetVisible(false); // quick menu row is retired: menus live in the phone / pause menu
 
             var s = GetScript(startScript.name);
             if (s != null) Player.Play(s, 0);
@@ -353,12 +613,15 @@ namespace VNKit
 
         public void ReturnToTitle()
         {
+            rollingBack = false;
             Player.Stop();
             Audio.StopBgm(0.5f);
             Audio.StopVoice();
             Characters.ClearAll();
             Backgrounds.Clear(0f);
             Cgs.Hide(0f);
+            if (Phone != null) Phone.ResetAll();
+            if (fadeImage != null) fadeImage.color = new Color(0f, 0f, 0f, 0f);
             HideAllPanels();
             Choice.Hide();
             Dialogue.Hide();
@@ -452,6 +715,11 @@ namespace VNKit
         {
             Sprite s = null;
             yield return VNResources.LoadSprite(CgAddress(name), x => s = x);
+            // Not found under VN/CG/? Treat the name as a FULL Addressables address
+            // (e.g. "VN/Characters/Rin/rin/selfie1") — handy for chat photos that live
+            // outside the CG folder.
+            if (s == null && !string.IsNullOrEmpty(name) && name.IndexOf('/') >= 0)
+                yield return VNResources.LoadSprite(name, x => s = x);
             if (s == null && usePlaceholderGraphics) s = PlaceholderArt.Background(name);
             if (onDone != null) onDone(s);
         }
@@ -506,7 +774,7 @@ namespace VNKit
 
         public void OpenGallery()
         {
-            if (!IsModalOpen()) GalleryPanel.Show();
+            if (!IsBlockingModalOpen()) GalleryPanel.Show();
         }
 
         /// <summary>Gallery click: load the CG and show it full-screen.</summary>
@@ -543,6 +811,15 @@ namespace VNKit
             var w = new StringList();
             w.items.AddRange(unlockedCgs);
             PlayerPrefs.SetString(CgsKey, JsonUtility.ToJson(w));
+        }
+
+        // ============================== Text input (@input) ==============================
+
+        /// <summary>Shows the text-input panel; the script waits for confirmation.</summary>
+        public void StartTextInput(string prompt, string defaultValue, int maxLength, Action<string> onDone)
+        {
+            Player.SetSkipHeld(false);
+            TextInputPanel.Show(prompt, defaultValue, maxLength, onDone);
         }
 
         // ============================== Minigames ==============================
@@ -590,13 +867,21 @@ namespace VNKit
                 background = Backgrounds.CurrentName,
                 bgm = Audio.CurrentBgm,
                 cg = Cgs.CurrentName,
-                characters = Characters.GetStates()
+                characters = Characters.GetStates(),
+                phoneOpen = Phone != null && Phone.IsOpen,
+                phoneChat = Phone != null ? Phone.CurrentChatId : null,
+                phonePos = Phone != null ? Phone.Position : null,
+                phoneChatStates = Phone != null ? Phone.GetChatStates() : null,
+                phoneChatMode = Phone != null && Phone.ChatMode,
+                phoneMenuActive = phoneMenuActive,
+                phoneDialogues = Phone != null ? Phone.GetDialogues() : null,
+                chatHubReturn = Player != null ? Player.ChatHubReturn : -1
             });
         }
 
         void DoRollback()
         {
-            if (rollback.Count == 0) return;
+            if (rollingBack || rollback.Count == 0) return;
             var snap = rollback.Pop();
             if (snap == null) return;
             StartCoroutine(RollbackRoutine(snap));
@@ -604,6 +889,7 @@ namespace VNKit
 
         IEnumerator RollbackRoutine(VNRollback.Snapshot snap)
         {
+            rollingBack = true;
             Player.Stop();
             Choice.Hide();
             Dialogue.Hide();
@@ -614,16 +900,23 @@ namespace VNKit
             while (backlog.Count > snap.backlogCount)
                 backlog.RemoveAt(backlog.Count - 1);
 
-            // Background
-            if (string.IsNullOrEmpty(snap.background)) Backgrounds.Restore(null, null);
-            else
+            // Background — reload only when it actually changed, so rollback inside
+            // a scene (e.g. during a phone chat) is instant instead of reloading
+            // every asset through Addressables.
+            if (!string.Equals(snap.background, Backgrounds.CurrentName, System.StringComparison.Ordinal))
             {
-                Sprite bg = null;
-                yield return LoadBackgroundAsync(snap.background, s => bg = s);
-                Backgrounds.Restore(snap.background, bg);
+                if (string.IsNullOrEmpty(snap.background)) Backgrounds.Restore(null, null);
+                else
+                {
+                    Sprite bg = null;
+                    yield return LoadBackgroundAsync(snap.background, s => bg = s);
+                    Backgrounds.Restore(snap.background, bg);
+                }
             }
 
             // Event CG
+            if (!string.Equals(snap.cg, Cgs.CurrentName, System.StringComparison.Ordinal))
+            {
             if (string.IsNullOrEmpty(snap.cg)) Cgs.Hide(0f);
             else
             {
@@ -641,17 +934,23 @@ namespace VNKit
                     Cgs.Show(snap.cg, cg, null, null, 0f);
                 }
             }
-
-            // BGM
-            if (!string.IsNullOrEmpty(snap.bgm))
-            {
-                AudioClip clip = null;
-                yield return LoadBgmAsync(snap.bgm, c => clip = c);
-                Audio.PlayBgm(snap.bgm, clip, 0.2f);
             }
-            else Audio.StopBgm(0.1f);
 
-            // Characters
+            // BGM — restart only when the track changed.
+            if (!string.Equals(snap.bgm, Audio.CurrentBgm, System.StringComparison.Ordinal))
+            {
+                if (!string.IsNullOrEmpty(snap.bgm))
+                {
+                    AudioClip clip = null;
+                    yield return LoadBgmAsync(snap.bgm, c => clip = c);
+                    Audio.PlayBgm(snap.bgm, clip, 0.2f);
+                }
+                else Audio.StopBgm(0.1f);
+            }
+
+            // Characters — rebuild only when the cast actually changed.
+            if (!CharStatesEqual(snap.characters, Characters.GetStates()))
+            {
             var sprites = new List<Sprite>();
             var skels = new List<UnityEngine.Object>();
             if (snap.characters != null)
@@ -677,17 +976,40 @@ namespace VNKit
                 }
             }
             Characters.RestoreStates(snap.characters, sprites, skels);
+            }
+
+            // Phone messenger (chat history trims back to the snapshot point).
+            if (Phone != null) Phone.RestoreSnapshot(snap.phoneOpen, snap.phoneChat, snap.phonePos, snap.phoneChatStates, snap.phoneChatMode);
+            if (Phone != null) Phone.RestoreDialogues(snap.phoneDialogues);
+            if (Player != null) Player.ChatHubReturn = snap.chatHubReturn;
+            SetPhoneMenu(snap.phoneMenuActive);
 
             hudHidden = false;
             Dialogue.SetHudVisible(true);
 
             var script = GetScript(snap.scriptName);
-            if (script == null) yield break;
+            if (script == null) { rollingBack = false; yield break; }
 
             // Re-executing the Say/Choice pushes a fresh snapshot; suppress it so
             // consecutive wheel-ups keep stepping backwards.
             suppressRollbackCapture = true;
+            rollingBack = false;
             Player.Play(script, snap.commandIndex);
+        }
+
+        /// <summary>Structural comparison of character states (rollback skip-unchanged check).</summary>
+        static bool CharStatesEqual(List<VNCharState> a, List<VNCharState> b)
+        {
+            if (a == null || a.Count == 0) return b == null || b.Count == 0;
+            if (b == null || a.Count != b.Count) return false;
+            for (int i = 0; i < a.Count; i++)
+            {
+                var x = a[i]; var y = b[i];
+                if (x == null || y == null) { if (x != y) return false; continue; }
+                if (x.name != y.name || x.appearance != y.appearance || x.visible != y.visible) return false;
+                if (x.visible && System.Math.Abs(x.pos - y.pos) > 0.001f) return false;
+            }
+            return true;
         }
 
         // ============================== Save / Load ==============================
@@ -696,23 +1018,39 @@ namespace VNKit
         {
             if (Player.State == PlayerState.WaitingChoice) { VNLog.Warn("Cannot save during a choice."); return false; }
             if (Player.State == PlayerState.WaitingMinigame) { VNLog.Warn("Cannot save during a mini-game."); return false; }
-            if (Player.State != PlayerState.WaitingInput && Player.State != PlayerState.Running)
+            if (Player.State == PlayerState.WaitingTextInput) { VNLog.Warn("Cannot save during text input."); return false; }
+            if (Player.State != PlayerState.WaitingInput && Player.State != PlayerState.Running
+                && Player.State != PlayerState.WaitingChat && Player.State != PlayerState.WaitingChatEnter)
             {
                 VNLog.Warn("Nothing to save right now.");
                 return false;
             }
             if (Dialogue.IsTyping) Dialogue.CompleteLine();
 
+            // Parked at @waitchat / holding a chat line: resume by re-running that
+            // command — the hub re-parks itself (or passes, if dialogues finished).
+            int resumeIndex = Player.NextCommandIndex;
+            if (Player.State == PlayerState.WaitingChat || Player.State == PlayerState.WaitingChatEnter)
+                resumeIndex = Mathf.Max(0, resumeIndex - 1);
+
             var data = new VNSaveData
             {
                 scriptName = Player.CurrentScriptName,
-                nextCommandIndex = Player.NextCommandIndex,
+                nextCommandIndex = resumeIndex,
                 background = Backgrounds.CurrentName,
                 bgm = Audio.CurrentBgm,
                 cg = Cgs.CurrentName,
                 characters = Characters.GetStates(),
                 variables = Variables.ToEntries(),
                 backlog = new List<VNBacklogEntry>(backlog),
+                phoneOpen = Phone != null && Phone.IsOpen,
+                phonePos = Phone != null ? Phone.Position : null,
+                phoneChat = Phone != null ? Phone.CurrentChatId : null,
+                phoneChats = Phone != null ? Phone.GetChats() : new List<VNPhoneChat>(),
+                phoneChatMode = Phone != null && Phone.ChatMode,
+                phoneMenuActive = phoneMenuActive,
+                phoneDialogues = Phone != null ? Phone.GetDialogues() : new List<VNChatDialogue>(),
+                chatHubReturn = Player != null ? Player.ChatHubReturn : -1,
                 preview = backlog.Count > 0 ? backlog[backlog.Count - 1].text : "",
                 timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
             };
@@ -729,6 +1067,8 @@ namespace VNKit
             Title.Hide();
             HideAllPanels();
             Choice.Hide();
+            rollingBack = false;
+            if (Phone != null) Phone.CloseMenu();
             Player.Stop();
             Dialogue.Hide(); // stops any in-flight typewriter coroutine
             QuickMenu.SetVisible(false);
@@ -838,7 +1178,18 @@ namespace VNKit
 
             hudHidden = false;
             Dialogue.SetHudVisible(true);
-            QuickMenu.SetVisible(true);
+            phoneMenuActive = data.phoneMenuActive;
+            QuickMenu.SetVisible(false); // quick menu row is retired: menus live in the phone / pause menu
+            if (PauseMenu != null) PauseMenu.Hide();
+
+            // Phone messenger state (open / contact / chat history / live dialogues).
+            if (Phone != null)
+            {
+                Phone.CloseMenu();
+                Phone.Restore(data.phoneOpen, data.phoneChat, data.phonePos, data.phoneChats, data.phoneChatMode);
+                Phone.RestoreDialogues(data.phoneDialogues);
+            }
+            if (Player != null) Player.ChatHubReturn = data.chatHubReturn;
 
             var script = GetScript(data.scriptName);
             if (script == null)
@@ -853,10 +1204,19 @@ namespace VNKit
 
         // ============================== Panels (quick menu / buttons) ==============================
 
-        public void OpenBacklog()   { if (!IsModalOpen() && !Title.IsOpen) BacklogPanel.Show(backlog); }
-        public void OpenSavePanel() { if (!IsModalOpen() && !Title.IsOpen) SaveLoadPanel.Show(SaveLoadUI.Mode.Save); }
-        public void OpenLoadPanel() { if (!IsModalOpen()) SaveLoadPanel.Show(SaveLoadUI.Mode.Load); }
-        public void OpenSettings()  { if (!IsModalOpen()) SettingsPanel.Show(); }
+        /// <summary>Modals that block opening ANOTHER panel. The phone menu is NOT
+        /// blocking: its apps (save/load/settings/backlog) open on top of it.</summary>
+        bool IsBlockingModalOpen()
+        {
+            return BacklogPanel.IsOpen || SaveLoadPanel.IsOpen || SettingsPanel.IsOpen || GalleryPanel.IsOpen
+                || (PhotoViewer != null && PhotoViewer.IsOpen)
+                || (PauseMenu != null && PauseMenu.IsOpen);
+        }
+
+        public void OpenBacklog()   { if (!IsBlockingModalOpen() && !Title.IsOpen) BacklogPanel.Show(backlog); }
+        public void OpenSavePanel() { if (!IsBlockingModalOpen() && !Title.IsOpen) SaveLoadPanel.Show(SaveLoadUI.Mode.Save); }
+        public void OpenLoadPanel() { if (!IsBlockingModalOpen()) SaveLoadPanel.Show(SaveLoadUI.Mode.Load); }
+        public void OpenSettings()  { if (!IsBlockingModalOpen()) SettingsPanel.Show(); }
 
         public void HideAllPanels()
         {
@@ -864,6 +1224,9 @@ namespace VNKit
             SaveLoadPanel.Hide();
             SettingsPanel.Hide();
             GalleryPanel.Hide();
+            if (PhotoViewer != null) PhotoViewer.Hide();
+            if (PauseMenu != null) PauseMenu.Hide();
+            if (Phone != null) Phone.CloseMenu();
         }
 
         public void ToggleAuto() { Player.AutoMode = !Player.AutoMode; RefreshQuickMenuToggles(); }

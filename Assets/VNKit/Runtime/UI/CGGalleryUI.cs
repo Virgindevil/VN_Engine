@@ -131,6 +131,20 @@ namespace VNKit
                     btn.onClick.AddListener(delegate { engine.OpenCgViewer(cgName); });
                     // Async thumbnail load
                     engine.StartCoroutine(LoadThumb(cgName, raw));
+
+                    // Memory: this CG replays a scene (VisualNovelEngine.memories).
+                    var mem = engine.GetMemory(cgName);
+                    if (mem != null)
+                    {
+                        var play = UIFactory.Button(brt, "Memory", "▶", 24,
+                            delegate { Hide(); engine.StartMemory(mem.script, mem.label); });
+                        var prt = (RectTransform)play.transform;
+                        prt.anchorMin = new Vector2(1f, 1f);
+                        prt.anchorMax = new Vector2(1f, 1f);
+                        prt.pivot = new Vector2(1f, 1f);
+                        prt.sizeDelta = new Vector2(64f, 48f);
+                        prt.anchoredPosition = new Vector2(-6f, -6f);
+                    }
                 }
                 else
                 {

@@ -18,12 +18,110 @@
 
 @bg Campus time:0.8
 @bgm ThemeDay fade:1.5
-@set affection=0, lockResult=0
+@set affection=0, lockResult=0, playerName="Alex"
+
+The academy admissions office. A single enrollment form waits on the desk.
+
+; TEXT INPUT — the player signs the form. The name lands in $playerName;
+; from now on it can be used in ANY line as {playerName}.
+@input var:playerName prompt:"Sign the enrollment form" default:"Alex" max:18
+
+The ink dries. {playerName} — the academy has a new student.
+
+; RICH TEXT works in any line: <b>bold</b>, <i>italic</i>,
+; <color=#e8739c>colored</color>, <size=125%>bigger</size> — tags
+; survive the typewriter effect intact.
+The form notes, in <i>elegant handwriting</i>: <b>"Welcome home, {playerName}."</b>
+
+The form asks for one last detail.
+
+; GENDER BRANCH — no separate files needed. We store PRONOUNS in
+; variables and use them later as {he}/{him}/{his}; big scenes can
+; still diverge through ordinary @if labels.
+@choice "Male" goto:Male | "Female" goto:Female
+
+# Male
+@set playerSex="male", he="he", him="him", his="his"
+@goto ContinueData
+
+# Female
+@set playerSex="female", he="she", him="her", his="her"
+@goto ContinueData
+
+# ContinueData
+System: Data confirmed. Gender: {playerSex}.
 
 A warm spring afternoon. The school day is finally over.
 
+; ---------------------------------------------------------
+; @phoneOn — from now on RMB/Esc open the PHONE menu (before
+; this command the classic box menu is used; @phoneOff
+; switches back to the classic menu).
+@phoneOn
+; ---------------------------------------------------------
+; PHONE UI 2.11 — messenger hub, like a real messenger.
+;
+; 1. @msg PRE-FILLS chats: Mom's and Rin's texts are already
+;    on the phone when the player opens it (history, not
+;    "everyone texting at once"). @msg runs in the background:
+;    no forced phone opening, no waiting — a chain of @msg
+;    lines all land at once. notify:0 skips the toast banner
+;    (backstory shouldn't ping the player).
+; 2. @online ... goto:Label brings a contact ONLINE: the chat
+;    gets a ● dot, a toast pops up (notify:0 skips it), and
+;    the dialogue itself lives under the label, WAITING for
+;    the player — lines never advance before the chat opens.
+; 3. @waitchat pauses the script until the listed dialogues
+;    are finished. The player picks who to talk to first —
+;    the live dialogue plays with whoever's chat they enter.
+;    remind:"..." — the phrase shown if the player pockets the
+;    phone with story dialogues still pending.
+; 4. @chatend ends the current dialogue and returns the script
+;    to @waitchat, which re-checks who's still pending.
+; ---------------------------------------------------------
+@msg chat:family notify:0 from:"Mom" "Where are you? Classes are over!"
+@msg chat:family notify:0 from:"Mom" "How's your first day, {playerName}? Don't stay out late."
+@msg chat:exes notify:0 from:"Rin" "Ayame and I are already on the rooftop 😼"
+@msg chat:exes notify:0 from:"Rin" "Hurry up, the sky is unreal today!"
+@photo chat:exes notify:0 cg/roof_sky sender:Rin
+
+The phone buzzes. A message from Ayame.
+
+@online chat:ayame contact:"Ayame 🌸" goto:AyameTalk pos:left
+@online chat:exes contact:"Rin 🦊" goto:RinTalk notify:0
+
+; The script waits here until the player talks to BOTH: open
+; the phone (RMB) to find Mom's and Rin's chats with history,
+; a toast from Ayame, and ● online dots for Ayame and Rin —
+; the player chooses which chat to enter first.
+@waitchat ayame exes remind:"I haven't finished talking to everyone I meant to."
+@goto AfterChats
+
+# AyameTalk
+Ayame: Heyy, {playerName}! You're coming to the rooftop, right? 👀
+{playerName}: On my way.
+@typing time:1.4
+Ayame: Don't keep us waiting~
+Ayame: Btw, look at the sky today!
+@photo cg/roof_sky sender:Ayame
+{playerName}: Gorgeous. Running up now.
+@chatend
+
+# RinTalk
+Rin: Finally, {playerName} is online 😼
+{playerName}: Gimme a sec, just got to my phone.
+Rin: Ayame's been staring at the door non-stop. Get up here.
+@chatend
+
+# AfterChats
+; @offline clears the online dots and the dialogue queue;
+; the conversations themselves stay in the Chats tab.
+@offline
+
+You pocket the phone and head upstairs.
+
 @char Ayame.Idle pos:center time:0.5
-Ayame: Hey, you actually came! [br]I wasn't sure you would.
+Ayame: Hey, {playerName}, you actually came! [br]I wasn't sure you would.
 
 ; Emotion switch: with a Spine entry for "Ayame" this plays the
 ; "Smile" ANIMATION mid-scene; with sprites it swaps the sprite.
@@ -34,18 +132,26 @@ Ayame.Smile: The view from the rooftop is amazing at this hour.
 Rin: Oh. You brought someone along.
 @sfx Chime
 
-Ayame.Smile: This is the transfer student I told you about.
+Ayame.Smile: Rin, meet {playerName} — {he}'s the transfer student I told you about.
 
-@choice "Greet Rin warmly" goto:Warm do:affection+=1 | "Nod quietly" goto:Quiet | "Try the old locker" goto:Locker
+; The last option appears ONLY for a male player:
+; choice conditions support quoted strings (if:playerSex=="male").
+@choice "Greet Rin warmly" goto:Warm do:affection+=1 | "Nod quietly" goto:Quiet | "Try the old locker" goto:Locker | "Wink at Rin" goto:Wink if:playerSex=="male"
 
 # Warm
-Rin.Smile: ...Hi. Nice to meet you, I guess.
+Rin.Smile: ...Hi, {playerName}. Nice to meet you, I guess.
 Ayame.Laugh: See? I told you she warms up fast.
 @goto Park
 
 # Quiet
 Rin: Hm. The quiet type, huh.
-Ayame: Give them a chance, Rin.
+Ayame: Give {him} a chance, Rin.
+@goto Park
+
+# Wink
+@set affection+=1
+Rin.Shy: ...Did you just wink at me?
+Ayame.Laugh: Careful, {playerName}, {he}'s bolder than {he} looks.
 @goto Park
 
 ; ---------------------------------------------------------
@@ -92,7 +198,7 @@ Ayame.Smile: Days like this make everything feel possible.
 ; (mouse wheel up / PageUp) and pick other choices to compare.
 # GoodEnd
 @bgm ThemeSunset fade:1
-Rin.Smile: You're alright. Come back tomorrow, okay?
+Rin.Smile: You're alright, {playerName}. Come back tomorrow, okay?
 
 ; EVENT CG #2 — unlocked only on the good end.
 @cg RooftopNight fade:1.2
@@ -107,4 +213,9 @@ Rin: ...See you around, I suppose.
 # Finale
 @hideChars time:1.0
 And so the day quietly came to an end.[br][br]<i>Gallery, saves, backlog, rollback — everything you just saw is already working. Thanks for trying VNKit!</i>
+
+; SCREEN FADE — @fadeOut darkens the scene (UI stays readable);
+; the next script re-opens with @fadeIn. Non-blocking.
+@fadeOut time:1.5
+@wait 1.6
 @goto Epilogue.Start

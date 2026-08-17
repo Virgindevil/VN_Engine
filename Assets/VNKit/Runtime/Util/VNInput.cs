@@ -122,5 +122,43 @@ namespace VNKit
         {
             return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
         }
+
+        static readonly System.Collections.Generic.List<RaycastResult> raycastBuffer =
+            new System.Collections.Generic.List<RaycastResult>();
+
+        /// <summary>
+        /// Advance-click gating that looks only at the TOPMOST UI element under the pointer:
+        /// when it belongs to allowRoot (the phone overlay), the click counts as "not over UI"
+        /// and advances the dialogue. The phone body is raycast-solid and swallows clicks
+        /// (VNClickCatcher), so buttons behind the phone can neither be clicked nor block
+        /// advance clicks — while any other UI (buttons, panels) still blocks as before.
+        /// </summary>
+        public static bool PointerOverUI(Transform allowRoot)
+        {
+            if (EventSystem.current == null) return false;
+#if ENABLE_LEGACY_INPUT_MANAGER
+            Vector2 pos = Input.mousePosition;
+#elif ENABLE_INPUT_SYSTEM
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            Vector2 pos = mouse != null ? mouse.position.ReadValue() : Vector2.zero;
+#else
+            Vector2 pos = Vector2.zero;
+#endif
+            var data = new PointerEventData(EventSystem.current) { position = pos };
+            raycastBuffer.Clear();
+            EventSystem.current.RaycastAll(data, raycastBuffer);
+            if (raycastBuffer.Count == 0) return false;
+            var top = raycastBuffer[0].gameObject;
+            if (allowRoot != null && top != null && top.transform.IsChildOf(allowRoot))
+            {
+                // Interactive elements inside the phone (chat rows, app icons,
+                // photo bubbles, the back button) perform their own action —
+                // the same click must NOT also advance the dialogue.
+                if (top.GetComponentInParent<UnityEngine.UI.Button>() != null) return true;
+                // Photo attachments ("PhonePhoto") open the full-screen viewer on click.
+                return top.name == "PhonePhoto";
+            }
+            return true;
+        }
     }
 }

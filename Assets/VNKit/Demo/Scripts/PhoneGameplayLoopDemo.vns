@@ -1,0 +1,156 @@
+; ---------------------------------------------------------
+; VNKit 2.12.1 — Phone Gameplay Loop demo
+; The full gameplay loop in one script:
+;   message received → read → player doesn't answer →
+;   Contacts → character card → Chat Action → affection changes →
+;   photo received → photo viewed → Notes → Schedule → Phone Game →
+;   game result into a variable → message expires → character reacts.
+; Enable "Use Placeholder Graphics" to run this without any art.
+; ---------------------------------------------------------
+
+# Start
+
+@bg Campus time:0.8
+@bgm ThemeDay fade:1.5
+@phoneOn
+@set affection.rin=0, trust.rin=0, reliability.rin=0
+
+Classes are over. Tomorrow is the entrance test for the «Elysium» program —
+and Rin has been digging through the academy archive all week.
+
+; --- Two chats already exist: Max (plain history) and Rin.
+; Rin's message carries id:rin_elysium — from now on the script can check
+; message.rin_elysium.received / .read / .answered (and later .expired).
+@msg chat:max notify:0 from:"Max" "Yo. Music club after classes, you in?"
+@msg chat:rin notify:0 from:"Rin" "Found something in the archive. About «Elysium»."
+@msg chat:rin id:rin_elysium from:"Rin" "Roof. Six o'clock. Tell me you'll be there."
+
+; --- The archive photo goes to the gallery LOCKED: the player sees
+; a dimmed tile but can't open it until the script unlocks it.
+@gallery add cg/roof_sky id:roof1 locked:1 sender:"Rin" date:"May 12" location:"Roof" desc:"A page from the academy archive." tag:elysium
+
+; --- Both contacts come online; Rin has a live dialogue waiting.
+@online chat:max contact:"Max 🎧" goto:MaxTalk notify:0
+@online chat:rin contact:"Rin 🌸" goto:RinTalk
+
+; --- Contextual actions for Rin's chat. They are reachable from the chat
+; itself AND from her card in Contacts (Contacts → Rin → action).
+; do: changes relationship variables; once:1 (default) makes each action
+; fire only once — even across Save/Load and Rollback.
+@chatActions chat:rin "Ask about the archive" goto:AskArchive do:affection.rin+=1 | "Promise to come" goto:Promise do:reliability.rin+=1
+
+Rin's dot lights up online. Open the phone (RMB): read her message,
+check Contacts — her card shows affection / trust / reliability and
+the same action buttons as the chat.
+
+; --- FREE PHONE PHASE: the script parks here until «Continue».
+; The player may answer Rin — or ignore her.
+@phonehub
+
+; --- Did the player answer the tracked message?
+@if message.rin_elysium.answered == true goto:WasAnswered
+You never answered Rin's message. She noticed.
+@set reliability.rin-=1
+@goto AfterHub
+
+# WasAnswered
+You answered — that's worth something to her.
+@set trust.rin+=1
+
+# AfterHub
+
+; --- Evening: Rin sends the archive photo. The gallery entry unlocks,
+; and the photo lands in the chat as a tracked message too.
+@msg chat:rin from:"Rin" "Here. Straight from the archive."
+@gallery unlock id:roof1
+@photo chat:rin cg/roof_sky sender:Rin id:rin_photo
+
+Check the Gallery — the locked tile is open now. Tap the photo:
+left click zooms in, the wheel zooms smoothly, drag to pan.
+
+; --- Second free phase: let the player actually look at the photo.
+@phonehub
+
+; --- Did the player VIEW the photo? (gallery.roof1.viewed == true)
+@if gallery.roof1.viewed == true goto:SawPhoto
+You never opened the photo. Whatever was on that page — you missed it.
+@goto AfterPhoto
+
+# SawPhoto
+You studied every line of the archive page. This goes into Notes —
+as evidence, with the source attached.
+@note add "The archive page mentions the «Elysium» selection program." id:n1 category:evidence source:rin
+@note add "Rin has archive access. How?" id:n2 category:secrets source:rin
+
+# AfterPhoto
+
+; --- Notes + Schedule as ordinary gameplay tools.
+@note add "Max invited me to the music club." id:n3 category:people source:max
+@schedule add time:"18:00" title:"Roof — meeting with Rin" id:ev1
+@schedule add time:"21:00" title:"Dorm curfew" id:ev2
+
+; --- PHONE GAME: the result lands in a variable (and in
+; phoneGame.Lockpick.plays / .last for the Games tab).
+On the way home — the old storage room. The padlock opens like a phone app.
+@phoneGame Lockpick var:lockResult
+@if lockResult == 1 goto:Cracked
+The pick broke. (lockResult = 0, phoneGame.Lockpick.last = 0.)
+@goto AfterGame
+
+# Cracked
+Unlocked! (lockResult = 1.) Inside — a dusty folder stamped «ELYSIUM».
+@note add "Storage room: a folder stamped «ELYSIUM»." id:n4 category:evidence source:player
+
+# AfterGame
+
+; --- EXPIRE: the six-o'clock invitation is no longer relevant.
+; Not a timer — a plain script state: message.rin_elysium.expired = 1.
+@message expire id:rin_elysium
+
+; --- The character reacts: the follow-up depends on affection AND on
+; whether the message expired unanswered.
+@if affection.rin >= 2 goto:WarmRin
+@msg chat:rin from:"Rin" "You could at least pretend to be interested."
+@goto Finale
+
+# WarmRin
+@msg chat:rin from:"Rin" "…thanks for today. For listening. For everything."
+
+# Finale
+
+Everything you saw — message states, the gallery lock, viewed photos,
+notes with categories, the schedule, chat actions, game stats — lives
+in the save file and survives rollback.
+
+@phoneOff
+@end
+
+; ---------------------------------------------------------
+# RinTalk
+Rin: You're online! Did you read it?
+{playerName}: Just opened the chat.
+@typing time:1.4
+Rin: Six o'clock. Roof. Don't be late — this is about «Elysium».
+@typing time:1.0
+Rin: And… thanks for not ignoring me.
+@chatend
+
+# MaxTalk
+Max: Yooo, {playerName}! Music club, you coming?
+{playerName}: Maybe later. Things to do.
+@typing time:1.1
+Max: You and your secrets 😑
+@chatend
+
+# AskArchive
+{playerName}: Tell me about the archive. What did you find?
+@typing time:1.6
+Rin: A whole section on the «Elysium» program. Selection, tests, contracts…
+Rin: I'll send you the photo tonight. Don't show anyone.
+@chatend
+
+# Promise
+{playerName}: I'll be there at six. Promise.
+@typing time:0.9
+Rin: You'd better be.
+@chatend

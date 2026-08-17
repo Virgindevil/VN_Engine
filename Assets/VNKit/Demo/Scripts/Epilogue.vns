@@ -2,6 +2,7 @@
 
 # Start
 @bg Night time:1.5
+@fadeIn time:1.2
 Somewhere beyond the hills, the story continues...
 @wait 1.0
 <b>THE END</b>

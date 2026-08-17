@@ -8,7 +8,8 @@ namespace VNKit
     {
         Say, Char, HideChar, HideChars, Background,
         Bgm, StopBgm, Sfx, Voice, StopVoice,
-        Cg, Minigame,
+        Cg, Minigame, Input,
+        Phone, Typing, Fade, Photo, PhoneMsg, ChatTarget, PhoneMenuToggle, WaitChat, ChatEnd,
         Choice, Goto, Set, If, Wait, End, Custom
     }
 

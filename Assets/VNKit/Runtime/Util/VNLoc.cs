@@ -46,6 +46,16 @@ namespace VNKit
                 {"minigame.lockpick.hint", "A/D or mouse — move pick, hold SPACE — turn lock"},
                 {"minigame.lockpick.success", "Unlocked!"}, {"minigame.lockpick.fail", "The pick broke..."},
                 {"minigame.picks", "Picks"},
+                {"input.prompt", "Enter your name"}, {"input.confirm", "Sign"},
+                {"input.defaultName", "Alex"}, {"input.hint", "Type here..."},
+                {"phone.online", "online"}, {"phone.typing", "typing"},
+                {"phone.home", "Phone"}, {"phone.chats", "Chats"}, {"phone.photos", "Photos"},
+                {"phone.photo", "[photo]"}, {"phone.nochats", "No chats yet."}, {"phone.nophotos", "No photos yet."}, {"phone.unread", "New messages"},
+                {"phone.app.chats", "Chats"}, {"phone.app.photos", "Photos"}, {"phone.app.backlog", "Backlog"},
+                {"phone.app.save", "Save"}, {"phone.app.load", "Load"},
+                {"phone.app.settings", "Settings"}, {"phone.app.title", "Main menu"},
+                {"menu.title", "Menu"}, {"menu.resume", "Continue"},
+                {"menu.save", "Save"}, {"menu.load", "Load"},
             };
             var ru = new Dictionary<string, string>
             {
@@ -74,6 +84,16 @@ namespace VNKit
                 {"minigame.lockpick.hint", "A/D или мышь — двигать отмычку, держите ПРОБЕЛ — крутить замок"},
                 {"minigame.lockpick.success", "Открыто!"}, {"minigame.lockpick.fail", "Отмычка сломалась..."},
                 {"minigame.picks", "Отмычки"},
+                {"input.prompt", "Введите имя"}, {"input.confirm", "Подписать"},
+                {"input.defaultName", "Алекс"}, {"input.hint", "Пишите здесь..."},
+                {"phone.online", "в сети"}, {"phone.typing", "печатает"},
+                {"phone.home", "Телефон"}, {"phone.chats", "Чаты"}, {"phone.photos", "Фото"},
+                {"phone.photo", "[фото]"}, {"phone.nochats", "Пока нет чатов."}, {"phone.nophotos", "Пока нет фото."}, {"phone.unread", "Новые сообщения"},
+                {"phone.app.chats", "Чаты"}, {"phone.app.photos", "Фото"}, {"phone.app.backlog", "История"},
+                {"phone.app.save", "Сохранить"}, {"phone.app.load", "Загрузить"},
+                {"phone.app.settings", "Настройки"}, {"phone.app.title", "В меню"},
+                {"menu.title", "Меню"}, {"menu.resume", "Продолжить"},
+                {"menu.save", "Сохранить"}, {"menu.load", "Загрузить"},
             };
             tables["en"] = en;
             tables["ru"] = ru;
