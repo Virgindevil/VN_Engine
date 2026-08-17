@@ -164,6 +164,14 @@ namespace VNKit
                     case VNCommandType.PhoneMenuToggle: DoPhoneMenuToggle(cmd); break;
                     case VNCommandType.WaitChat: if (DoWaitChat(cmd)) return; break;
                     case VNCommandType.ChatEnd:  DoChatEnd(cmd); return;
+                    case VNCommandType.ChatActions: DoChatActions(cmd); break;
+                    case VNCommandType.PhoneHub: if (DoPhoneHub(cmd)) return; break;
+                    case VNCommandType.Note:     DoNote(cmd); break;
+                    case VNCommandType.Schedule: DoSchedule(cmd); break;
+                    case VNCommandType.Gallery:  DoGalleryCmd(cmd); break;
+                    case VNCommandType.PhoneGame: if (DoPhoneGame(cmd)) return; break;
+                    case VNCommandType.PhoneApp: DoPhoneApp(cmd); break;
+                    case VNCommandType.Message:  DoMessage(cmd); break;
                     case VNCommandType.Typing: DoTyping(cmd); return;
                     case VNCommandType.Fade:   DoFade(cmd); break;
                     case VNCommandType.Minigame:
@@ -240,7 +248,13 @@ namespace VNKit
             // 2.11: in chat mode a line (dialogue or narration) plays only while the
             // player is INSIDE the current chat — otherwise it is held until the
             // chat is opened (no scrolling the conversation from outside).
+            // 2.12.2: the hold needs an ACTIVE chat to wait for. @online ... goto:
+            // turns chat mode on without aiming at any chat (CurrentChatId == null),
+            // and OnChatEntered releases the line only when CurrentChatId == entered
+            // chat — with no active chat that condition can never become true and the
+            // game soft-locks on a held line. No active chat → play normally.
             if (engine.Phone != null && engine.Phone.ChatMode
+                && engine.Phone.CurrentChatId != null
                 && !engine.Phone.IsViewingChat(engine.Phone.CurrentChatId))
             {
                 pendingSay = cmd;
@@ -331,6 +345,15 @@ namespace VNKit
             else
             {
                 // @phone open contact:"Макс 🐶" chat:max pos:left  /  @phone open Макс
+                // 2.12.1 fix: "@online rin contact:... goto:..." (no chat:) used to
+                // register the dialogue on a PHANTOM chat keyed by the contact name,
+                // while @msg wrote into chat "rin" — the toast then opened an empty
+                // chat. The positional word now doubles as the chat id (bare
+                // "open"/"show"/"on" stay pure keywords).
+                string chatId = engine.Variables.Expand(cmd.Get("chat"));
+                if (string.IsNullOrEmpty(chatId)
+                    && action != "open" && action != "show" && action != "on")
+                    chatId = action;
                 string contact = engine.Variables.Expand(cmd.Get("contact", cmd.Pos));
                 string dlg = engine.Variables.Expand(cmd.Get("goto"));
                 if (!string.IsNullOrEmpty(dlg))
@@ -339,11 +362,11 @@ namespace VNKit
                     // pending live dialogue — no forced navigation; the player picks
                     // the chat in the messenger, the script jumps to the label then.
                     // notify:0 suppresses the "online" toast.
-                    engine.Phone.RegisterDialogue(engine.Variables.Expand(cmd.Get("chat")),
+                    engine.Phone.RegisterDialogue(chatId,
                         contact, dlg, cmd.GetFloat("notify", 1f) != 0f);
                 }
                 else
-                    engine.Phone.Open(engine.Variables.Expand(cmd.Get("chat")), contact, time, cmd.Get("pos"));
+                    engine.Phone.Open(chatId, contact, time, cmd.Get("pos"));
             }
         }
 
@@ -373,12 +396,12 @@ namespace VNKit
                 PlaySay(cmd); // now viewing → the line lands in the chat
                 return;
             }
-            if (State == PlayerState.WaitingChat)
+            if (State == PlayerState.WaitingChat || State == PlayerState.WaitingChatHub)
             {
                 string label = engine.Phone.PendingDialogueLabel(chatId);
                 if (!string.IsNullOrEmpty(label))
                 {
-                    hubReturnIndex = index - 1; // re-run @waitchat after @chatend
+                    hubReturnIndex = index - 1; // re-run the hub command after @chatend
                     engine.Phone.SetActiveChat(chatId, null);
                     if (DoGoto(label)) { State = PlayerState.Running; Step(); }
                 }
@@ -438,6 +461,197 @@ namespace VNKit
             }
             State = PlayerState.Running;
             Step();
+        }
+
+        /// <summary>@phonehub — free phone phase: the player roams the messenger
+        /// (live dialogues and @chatActions still work) and releases the script
+        /// with the «Далее» button on the chat list. Unlike @waitchat this phase
+        /// has no required conversations — it never shows the reminder phrase.</summary>
+        bool DoPhoneHub(VNCommand cmd)
+        {
+            if (engine.Phone == null) return false;
+            if (!engine.Phone.IsMenuOpen) engine.Phone.OpenChats(0.4f);
+            State = PlayerState.WaitingChatHub;
+            return true;
+        }
+
+        /// <summary>The player pressed «Далее» on the chat list during @phonehub.
+        /// The phone pockets itself so the story continues full-screen.</summary>
+        public void ReleaseChatHub()
+        {
+            if (State != PlayerState.WaitingChatHub) return;
+            if (engine.Phone != null && engine.Phone.IsMenuOpen) engine.Phone.CloseMenu();
+            State = PlayerState.Running;
+            Step();
+        }
+
+        /// <summary>@chatActions chat:rin [once:0] "Text" goto:Label [if:expr] [do:assign] | ...
+        /// Offers contextual action buttons inside the chat's reading screen.</summary>
+        void DoChatActions(VNCommand cmd)
+        {
+            if (engine.Phone == null) { VNLog.Warn("@chatActions requires the phone UI. Line " + cmd.LineNumber); return; }
+            engine.CaptureRollback(script.Name, index - 1);
+            string chatId = engine.Variables.Expand(cmd.Get("chat", cmd.Name));
+            if (string.IsNullOrEmpty(chatId)) chatId = engine.Phone.CurrentChatId;
+            if (string.IsNullOrEmpty(chatId))
+            {
+                VNLog.Warn("@chatActions: no target chat — add chat: first. Line " + cmd.LineNumber);
+                return;
+            }
+            if (cmd.Get("clear") == "1") { engine.Phone.ClearChatActions(chatId); return; }
+            engine.Phone.SetChatActions(chatId, cmd.Options, cmd.GetFloat("once", 1f) != 0f);
+        }
+
+        /// <summary>The player tapped a contextual action button in a chat
+        /// (allowed only while parked at @waitchat / @phonehub).</summary>
+        public void OnChatAction(VNPhoneAction a)
+        {
+            if (a == null || engine.Phone == null || script == null) return;
+            if (State != PlayerState.WaitingChat && State != PlayerState.WaitingChatHub) return;
+            hubReturnIndex = index - 1; // @chatend (or re-park) returns to the hub command
+            engine.Phone.MarkActionUsed(a); // used flag + the player's outgoing bubble
+            if (!string.IsNullOrEmpty(a.doAssign)) engine.Variables.Apply(a.doAssign);
+            if (!string.IsNullOrEmpty(a.label) && DoGoto(a.label))
+            {
+                engine.Phone.SetActiveChat(a.chatId, null); // the label's lines land in this chat
+                State = PlayerState.Running;
+                // The action may come from the Contacts card — bring the player
+                // to the chat screen first so the branch plays visibly.
+                engine.Phone.RevealChat(a.chatId);
+                Step();
+            }
+            // no label: a pure variable/reply action — the hub stays parked.
+        }
+
+        /// <summary>@message expire id:max_meeting — mark a tracked message as
+        /// outdated (message.&lt;id&gt;.expired = 1). A plain script state — no timers.</summary>
+        void DoMessage(VNCommand cmd)
+        {
+            if (engine.Phone == null) return;
+            string op = (cmd.Name ?? "").Trim().ToLowerInvariant();
+            string id = engine.Variables.Expand(cmd.Get("id", cmd.Pos));
+            if (op == "expire" && !string.IsNullOrEmpty(id))
+                engine.Phone.ExpireMessage(id);
+            else
+                VNLog.Warn("@message: use '@message expire id:...'. Line " + cmd.LineNumber);
+        }
+
+        /// <summary>@note add "text" [id:x] [important:1] [category:evidence] [source:rin]
+        /// / edit id:x "new text" / star id:x [important:0|1] / remove id:x / clear</summary>
+        void DoNote(VNCommand cmd)
+        {
+            if (engine.Phone == null) return;
+            engine.CaptureRollback(script.Name, index - 1);
+            string op = (cmd.Name ?? "").Trim().ToLowerInvariant();
+            string id = engine.Variables.Expand(cmd.Get("id"));
+            string text = engine.Variables.Expand(cmd.Get("text", cmd.Pos));
+            switch (op)
+            {
+                case "add":
+                    engine.Phone.AddNote(text, id, cmd.GetBool("important", false),
+                        engine.Variables.Expand(cmd.Get("category")), engine.Variables.Expand(cmd.Get("source")));
+                    break;
+                case "edit": engine.Phone.EditNote(id, text); break;
+                case "star":
+                    engine.Phone.StarNote(id, cmd.Get("important") == null
+                        ? (bool?)null : cmd.GetBool("important", true));
+                    break;
+                case "remove": engine.Phone.RemoveNote(id); break;
+                case "clear": engine.Phone.ClearNotes(); break;
+                default: VNLog.Warn("@note: unknown action '" + op + "' (add/edit/star/remove/clear). Line " + cmd.LineNumber); break;
+            }
+        }
+
+        /// <summary>@schedule add time:"18:00" title:"..." [id:ev1] / remove id:ev1 / clear</summary>
+        void DoSchedule(VNCommand cmd)
+        {
+            if (engine.Phone == null) return;
+            engine.CaptureRollback(script.Name, index - 1);
+            string op = (cmd.Name ?? "").Trim().ToLowerInvariant();
+            string id = engine.Variables.Expand(cmd.Get("id"));
+            switch (op)
+            {
+                case "add":
+                    engine.Phone.AddScheduleEvent(engine.Variables.Expand(cmd.Get("time")),
+                        engine.Variables.Expand(cmd.Get("title", cmd.Pos)), id);
+                    break;
+                case "remove": engine.Phone.RemoveScheduleEvent(id); break;
+                case "clear": engine.Phone.ClearSchedule(); break;
+                default: VNLog.Warn("@schedule: unknown action '" + op + "' (add/remove/clear). Line " + cmd.LineNumber); break;
+            }
+        }
+
+        /// <summary>@gallery add cg/x [id:x] [locked:1] [sender:] [date:] [location:]
+        /// [desc:] [tag:] [important:1] / remove / clear / lock id:x / unlock id:x</summary>
+        void DoGalleryCmd(VNCommand cmd)
+        {
+            if (engine.Phone == null) return;
+            engine.CaptureRollback(script.Name, index - 1);
+            string op = (cmd.Name ?? "").Trim().ToLowerInvariant();
+            string address = engine.Variables.Expand(cmd.Pos ?? "");
+            switch (op)
+            {
+                case "add":
+                    if (string.IsNullOrEmpty(address)) address = engine.Variables.Expand(cmd.Get("cg"));
+                    engine.Phone.AddGalleryItem(new VNPhoneGalleryItem
+                    {
+                        id = engine.Variables.Expand(cmd.Get("id")),
+                        address = address,
+                        sender = engine.Variables.Expand(cmd.Get("sender")),
+                        date = engine.Variables.Expand(cmd.Get("date")),
+                        location = engine.Variables.Expand(cmd.Get("location")),
+                        desc = engine.Variables.Expand(cmd.Get("desc")),
+                        tag = engine.Variables.Expand(cmd.Get("tag")),
+                        important = cmd.GetBool("important", false),
+                        locked = cmd.GetBool("locked", false)
+                    });
+                    break;
+                case "remove": engine.Phone.RemoveGalleryItem(address); break;
+                case "clear": engine.Phone.ClearGallery(); break;
+                case "lock":
+                case "unlock":
+                    engine.Phone.SetGalleryLocked(engine.Variables.Expand(cmd.Get("id", cmd.Pos)), op == "lock");
+                    break;
+                default: VNLog.Warn("@gallery: unknown action '" + op + "' (add/remove/clear/lock/unlock). Line " + cmd.LineNumber); break;
+            }
+        }
+
+        /// <summary>@phoneGame Lockpick [var:result] — a mini-game framed as a phone
+        /// app: plays/won stats land in phoneGame.&lt;id&gt;.plays / .last variables
+        /// (and in var: when given, like @minigame). Returns true while parked.</summary>
+        bool DoPhoneGame(VNCommand cmd)
+        {
+            if (!VNMinigames.Exists(cmd.Name))
+            {
+                VNLog.Warn("Unknown phone game '" + cmd.Name + "' (line " + cmd.LineNumber +
+                           "). Register it via VNMinigames.Register.");
+                return false; // continue with the next command
+            }
+            engine.CaptureRollback(script.Name, index - 1);
+            State = PlayerState.WaitingMinigame;
+            string varName = cmd.Get("var");
+            string gameId = cmd.Name;
+            engine.StartMinigame(cmd, delegate (bool success, string value)
+            {
+                engine.RecordPhoneGame(gameId, success, value);
+                if (!string.IsNullOrEmpty(varName))
+                    engine.Variables.Apply(varName + "=" + (string.IsNullOrEmpty(value) ? (success ? "1" : "0") : value));
+                State = PlayerState.Running;
+                Step();
+            });
+            return true;
+        }
+
+        /// <summary>@phoneapp gallery off — hide/show a home screen app.</summary>
+        void DoPhoneApp(VNCommand cmd)
+        {
+            if (engine.Phone == null) return;
+            engine.CaptureRollback(script.Name, index - 1);
+            string appId = (cmd.Name ?? "").Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(appId)) return;
+            string mode = (cmd.Pos ?? "").Trim().ToLowerInvariant();
+            bool hidden = mode == "on" ? false : mode == "" ? !engine.Phone.IsAppHidden(appId) : true;
+            engine.Phone.SetAppHidden(appId, hidden);
         }
 
         /// <summary>@phoneOn / @phoneOff — switch the in-game menu style at runtime:
@@ -542,16 +756,19 @@ namespace VNKit
             string sender = engine.Variables.Expand(cmd.Get("from", cmd.Get("sender")));
             bool incoming = string.IsNullOrEmpty(sender) || !IsSelfSpeaker(sender);
             bool notify = cmd.GetFloat("notify", 1f) != 0f;
+            // 2.12: id: mirrors the message state into variables
+            // (message.<id>.received / .read / .answered) — for @if branches.
+            string msgId = engine.Variables.Expand(cmd.Get("id"));
             if (sprite != null)
             {
                 engine.Phone.PushMessage(chatId, incoming, sender,
-                    engine.Variables.Expand(cmd.Get("photo")), 1, sprite, notify);
+                    engine.Variables.Expand(cmd.Get("photo")), 1, sprite, notify, msgId);
                 engine.AddBacklog(sender, VNLoc.T("phone.photo"));
             }
             else
             {
                 string text = engine.Variables.Expand(cmd.Name ?? "");
-                engine.Phone.PushMessage(chatId, incoming, sender, text, 0, null, notify);
+                engine.Phone.PushMessage(chatId, incoming, sender, text, 0, null, notify, msgId);
                 engine.AddBacklog(sender, text);
             }
             if (engine.Phone.IsViewingChat(chatId)) State = PlayerState.WaitingInput;
@@ -620,7 +837,13 @@ namespace VNKit
                 return false;
             }
             State = PlayerState.WaitingChoice;
-            engine.Choice.Show(texts, NotifyChoicePicked);
+            // 2.12.2: inside a live phone dialogue the choice renders as buttons
+            // at the bottom of the chat — the player never leaves the messenger.
+            // Everywhere else the classic full-screen overlay is used.
+            if (engine.Phone != null && engine.Phone.ChatMode && engine.Phone.CurrentChatId != null)
+                engine.Phone.ShowChoice(texts, NotifyChoicePicked);
+            else
+                engine.Choice.Show(texts, NotifyChoicePicked);
             return true;
         }
 

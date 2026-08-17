@@ -1,0 +1,128 @@
+; ---------------------------------------------------------
+; VNKit 2.12.1 — choices in the phone: a working reference
+;
+; Three proven patterns for choices in phone dialogues:
+;   1) @chatActions — choice buttons INSIDE the chat screen.
+;      They work while the script is parked at @phonehub / @waitchat;
+;      the rest of the time the button bar is hidden (by design).
+;   2) Branching inside the conversation: a branch hands out a NEW
+;      @chatActions set (the command replaces the chat's whole list)
+;      and returns to the hub via @chatend.
+;   3) @choice inside a live dialogue (@online … goto:) —
+;      choice buttons at the bottom of the chat, the player
+;      never leaves the conversation (outside the phone @choice
+;      is a full-screen overlay).
+;
+; Enable "Use Placeholder Graphics" to run this without any art.
+; ---------------------------------------------------------
+
+# Start
+
+@bg Campus time:0.8
+@phoneOn
+@set affection.rin=0, trust.rin=0
+
+; --- Chat history; both contacts come online.
+; Rin has a LIVE dialogue waiting (goto:RinTalk), Max a short one.
+@msg chat:rin notify:0 from:"Rin" "Found something in the archive. About «Elysium»."
+@online chat:rin contact:"Rin 🌸" goto:RinTalk
+@online chat:max contact:"Max 🎧" goto:MaxTalk notify:0
+
+Rin is waiting for an answer. Open the phone (RMB) and enter her
+chat — the live dialogue plays first.
+
+; --- @waitchat: the script parks until Rin's live dialogue is done.
+; The player may roam the phone meanwhile (Max's chat works too).
+@waitchat rin
+
+; --- PATTERN 1: choice buttons inside the chat.
+; The live dialogue is over — the free phase begins. The buttons
+; appear at the bottom of Rin's chat (and on her Contacts card).
+; once:1 by default — each button fires once; do: changes
+; relationship variables.
+@chatActions chat:rin "Ask about the archive" goto:AskArchive do:affection.rin+=1 | "Promise to come" goto:PromiseRoof do:trust.rin+=1
+
+; NOTE: there is deliberately no narration line between @waitchat and
+; @phonehub — @chatend drops the player onto the chat list, and a line
+; in chat mode would wait for them to re-enter the active chat. The hub
+; opens right away: the player enters Rin's chat and sees the buttons.
+; «Continue» sits on the chat list.
+@phonehub
+
+; --- After the free phase: react to what the player picked.
+@if affection.rin > 0 goto:ChoseArchive
+@if trust.rin > 0 goto:ChosePromise
+You never answered Rin. She noticed.
+@set trust.rin-=1
+@goto Finale
+
+# ChoseArchive
+You took an interest in her find — that matters to Rin.
+@goto Finale
+
+# ChosePromise
+You promised to come. Now you have to keep your word.
+
+# Finale
+@phone off
+Classes are over. Tomorrow — the «Elysium» entrance test.
+; (affection.rin / trust.rin are ready for further branching)
+
+; =========================================================
+; Rin's LIVE DIALOGUE — starts when the player enters her chat.
+; PATTERN 3: @choice inside a dialogue — choice buttons right
+; in the chat. Lines spoken by "Me" land in the chat as
+; outgoing bubbles.
+; =========================================================
+# RinTalk
+Rin: You read it?!
+Me: Just opened the chat.
+Rin: Tomorrow. Six o'clock. The roof. It's about «Elysium» — seriously.
+@choice "I'll be there, promise" goto:RinPromise do:trust.rin+=2 | "I'll try, no promises" goto:RinMaybe
+
+# RinPromise
+Rin: Noted. Be late and I'll come find you.
+@goto RinEnd
+
+# RinMaybe
+Rin: …Fine. Honest, at least.
+
+# RinEnd
+; @chatend finishes the live dialogue and returns the script
+; to the hub (@waitchat / @phonehub) it started from.
+@chatend
+
+; --- Max's live dialogue: short, no choice (can be skipped).
+# MaxTalk
+Max: Yo. Music club after classes. You in?
+Me: I'll drop by if I can.
+Max: Do it. The drummer speeds up without you.
+@chatend
+
+; =========================================================
+; CHOICE-BUTTON BRANCHES (patterns 1 and 2).
+; Started by tapping a button in the chat; lines land in the
+; chat as bubbles; @chatend returns the player to the hub.
+; =========================================================
+# AskArchive
+Rin: The archive holds the selection lists. We were put there in advance.
+Me: Who even needs this «Elysium»?
+Rin: The ones who decide what we become after graduation.
+; PATTERN 2: branching inside the conversation — REPLACE the button
+; set with a new one. Anything not re-registered here disappears.
+; if: shows the button only when the condition passes
+; (affection.rin already grew from tapping "Ask about the archive").
+@chatActions chat:rin "Ask to see the lists" goto:AskLists if:affection.rin>=1
+@chatend
+
+# AskLists
+Rin: …Fine. Tomorrow, on the roof. Not a word to anyone.
+@set trust.rin+=1
+; The branch has fully played out — clear the chat's buttons.
+@chatActions chat:rin clear:1
+@chatend
+
+# PromiseRoof
+Me: I'll come. Six o'clock, the roof. On time.
+Rin: We'll see.
+@chatend

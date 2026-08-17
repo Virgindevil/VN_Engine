@@ -39,9 +39,13 @@ namespace VNKit
     /// A custom skin sprite (e.g. a hand holding a phone) can replace the procedural
     /// body — see VisualNovelEngine.phoneSkin / phoneSize / phoneScreenRect.
     /// </summary>
-    public class PhoneUI
+    public partial class PhoneUI
     {
-        public enum Screen { Story, Home, ChatList, ReadChat, Photos }
+        // 2.12: Gallery replaces Photos (chat attachments + @gallery items with meta);
+        // Contacts / Notes / Schedule / Games are the phone apps.
+        // 2.12.1: ContactCard (a contact's page: relations + actions) and
+        // PhoneSettings (the Settings app: game settings + save/load/title).
+        public enum Screen { Story, Home, ChatList, ReadChat, Gallery, Contacts, Notes, Schedule, Games, ContactCard, PhoneSettings }
 
         static readonly Color BodyColor     = new Color(0.02f, 0.02f, 0.03f, 0.98f);
         static readonly Color ScreenColor   = new Color(0.07f, 0.08f, 0.11f, 1f);
@@ -250,12 +254,12 @@ namespace VNKit
             hvlg.childForceExpandHeight = false;
             hvlg.spacing = 14f;
             hvlg.padding = new RectOffset(6, 6, 18, 6);
-            AddAppButton(homeLayer.transform, "phone.app.chats", delegate { ShowScreen(Screen.ChatList); });
-            AddAppButton(homeLayer.transform, "phone.app.photos", delegate { ShowScreen(Screen.Photos); });
-            AddAppButton(homeLayer.transform, "phone.app.save", delegate { engine.OpenSavePanel(); });
-            AddAppButton(homeLayer.transform, "phone.app.load", delegate { engine.OpenLoadPanel(); });
-            AddAppButton(homeLayer.transform, "phone.app.settings", delegate { engine.OpenSettings(); });
-            AddAppButton(homeLayer.transform, "phone.app.title", delegate { engine.ReturnToTitle(); });
+            BuildHome(); // 2.12: app buttons are rebuilt on every visit (@phoneapp gating)
+
+            // 2.12: contextual chat actions (@chatActions) — a button bar at the
+            // bottom of the reading screen; «Далее» — the @phonehub exit button.
+            EnsureActionBar();
+            EnsureHubContinue();
 
             // ---- notification toast (top of the screen, tap → open that chat) ----
             // Sibling of the phone root so it stays visible while the phone is hidden.
@@ -502,6 +506,9 @@ namespace VNKit
             photoCache.Clear();
             pendingDialogues.Clear();
             doneDialogues.Clear();
+            pendingChoiceTexts = null; // 2.12.2: in-phone @choice
+            pendingChoiceCb = null;
+            ResetAppsData(); // 2.12: notes / schedule / gallery / actions / hidden apps
             currentChatId = null;
             chatMode = false;
             IsOpen = false;
@@ -618,10 +625,25 @@ namespace VNKit
         /// pre-fill via @msg ... notify:0 — the chat silently gains history).</summary>
         public void PushMessage(string chatId, bool incoming, string speaker, string text, int kind, Sprite sprite, bool notify)
         {
+            PushMessage(chatId, incoming, speaker, text, kind, sprite, notify, null);
+        }
+
+        /// <summary>2.12: id mirrors the message state into script variables —
+        /// message.&lt;id&gt;.received is set here, .read when the player opens the
+        /// chat, .answered when the player replies in this chat. Conditions like
+        /// @if message.rin_ask.read == true work with no extra systems.</summary>
+        public void PushMessage(string chatId, bool incoming, string speaker, string text, int kind, Sprite sprite, bool notify, string id)
+        {
             var chat = GetOrCreateChat(chatId, incoming ? speaker : null);
             if (kind == 1 && sprite != null) photoCache[text] = sprite;
-            var msg = new VNPhoneMessage { incoming = incoming, speaker = speaker, text = text, kind = kind };
+            var msg = new VNPhoneMessage { id = id ?? "", incoming = incoming, speaker = speaker, text = text, kind = kind };
             chat.messages.Add(msg);
+            if (!string.IsNullOrEmpty(msg.id))
+            {
+                if (incoming) MarkMessageVar(msg.id, "received");
+                else MarkLastIncomingAnswered(chat); // a reply answers the last tracked incoming message
+            }
+            else if (!incoming) MarkLastIncomingAnswered(chat);
             TrackPriority(chat, incoming);
 
             bool liveViewed = currentScreen == Screen.ReadChat && readChatId == chat.id;
@@ -646,6 +668,7 @@ namespace VNKit
         void TrackPriority(Chat chat, bool incoming)
         {
             if (incoming) { chat.awaiting = true; chat.penalized = false; return; }
+            if (engine == null) return; // reflection tests / headless use
             var cfg = engine.chatPriorities;
             if (cfg != null)
                 foreach (var p in cfg)
@@ -745,6 +768,14 @@ namespace VNKit
 
         void CreatePhotoBubble(RectTransform parent, VNPhoneMessage msg)
         {
+            CreatePhotoBubble(parent, msg, null);
+        }
+
+        /// <summary>galleryId != null → this bubble belongs to a @gallery item: opening
+        /// the viewer marks gallery.&lt;id&gt;.viewed. The click loads the photo on
+        /// demand (not cache-only) so it also works right after the bubble appeared.</summary>
+        void CreatePhotoBubble(RectTransform parent, VNPhoneMessage msg, string galleryId)
+        {
             string address = msg.text;
             var row = UIFactory.Rect("PhonePhoto", parent);
             var rowLE = row.gameObject.AddComponent<LayoutElement>();
@@ -779,8 +810,12 @@ namespace VNKit
 
             btn.onClick.AddListener(delegate
             {
-                Sprite s;
-                if (photoCache.TryGetValue(address, out s) && s != null) engine.ShowPhotoViewer(s);
+                EnsurePhoto(address, delegate (Sprite s)
+                {
+                    if (s == null) return;
+                    engine.ShowPhotoViewer(s);
+                    if (!string.IsNullOrEmpty(galleryId)) MarkGalleryViewed(galleryId);
+                });
             });
 
             EnsurePhoto(address, delegate (Sprite s)
@@ -924,8 +959,14 @@ namespace VNKit
             switch (currentScreen)
             {
                 case Screen.ReadChat: ShowScreen(Screen.ChatList); break;
+                case Screen.ContactCard: ShowScreen(Screen.Contacts); break;
                 case Screen.ChatList:
-                case Screen.Photos: ShowScreen(Screen.Home); break;
+                case Screen.Gallery:
+                case Screen.Contacts:
+                case Screen.Notes:
+                case Screen.Schedule:
+                case Screen.Games:
+                case Screen.PhoneSettings: ShowScreen(Screen.Home); break;
                 case Screen.Home: CloseMenu(); break;
                 // From the live chat (entered via the chat list) back to the list.
                 case Screen.Story: if (IsMenuOpen) ShowScreen(Screen.ChatList); break;
@@ -947,8 +988,9 @@ namespace VNKit
             storyLayer.SetActive(s == Screen.Story);
             readLayer.SetActive(s == Screen.ReadChat);
             listLayer.SetActive(s == Screen.ChatList);
-            photosLayer.SetActive(s == Screen.Photos);
+            photosLayer.SetActive(s == Screen.Gallery);
             homeLayer.SetActive(s == Screen.Home);
+            SetAppLayers(s); // 2.12: contacts / notes / schedule / games layers
             backButton.gameObject.SetActive(s != Screen.Story || IsMenuOpen);
 
             switch (s)
@@ -963,6 +1005,7 @@ namespace VNKit
                 case Screen.Home:
                     titleText.text = VNLoc.T("phone.home");
                     statusText.gameObject.SetActive(false);
+                    BuildHome(); // rebuild every visit: @phoneapp gating may have changed
                     break;
                 case Screen.ChatList:
                     titleText.text = VNLoc.T("phone.chats");
@@ -972,10 +1015,39 @@ namespace VNKit
                 case Screen.ReadChat:
                     statusText.gameObject.SetActive(false);
                     break;
-                case Screen.Photos:
-                    titleText.text = VNLoc.T("phone.photos");
+                case Screen.Gallery:
+                    titleText.text = VNLoc.T("phone.gallery");
                     statusText.gameObject.SetActive(false);
-                    BuildPhotos();
+                    BuildGallery();
+                    break;
+                case Screen.Contacts:
+                    titleText.text = VNLoc.T("phone.contacts");
+                    statusText.gameObject.SetActive(false);
+                    BuildContacts();
+                    break;
+                case Screen.Notes:
+                    titleText.text = VNLoc.T("phone.notes");
+                    statusText.gameObject.SetActive(false);
+                    BuildNotes();
+                    break;
+                case Screen.Schedule:
+                    titleText.text = VNLoc.T("phone.schedule");
+                    statusText.gameObject.SetActive(false);
+                    BuildSchedule();
+                    break;
+                case Screen.Games:
+                    titleText.text = VNLoc.T("phone.games");
+                    statusText.gameObject.SetActive(false);
+                    BuildGames();
+                    break;
+                case Screen.ContactCard:
+                    statusText.gameObject.SetActive(false);
+                    BuildContactCard(); // title = contact name (set inside)
+                    break;
+                case Screen.PhoneSettings:
+                    titleText.text = VNLoc.T("phone.app.settings");
+                    statusText.gameObject.SetActive(false);
+                    BuildPhoneSettings();
                     break;
             }
         }
@@ -983,6 +1055,7 @@ namespace VNKit
         void BuildChatList()
         {
             ClearChildren(listContent);
+            RefreshHubContinue(); // 2.12: «Далее» button while the script sits at @phonehub
             if (chatOrder.Count == 0)
             {
                 UIFactory.Text(listContent, "Empty", VNLoc.T("phone.nochats"), 24,
@@ -1036,7 +1109,11 @@ namespace VNKit
                 CreateBubble(readContent, c.messages[i]);
             }
             c.unread = 0;
+            // 2.12: tracked messages become "read" once the player sees them.
+            for (int i = 0; i < c.messages.Count; i++)
+                if (!string.IsNullOrEmpty(c.messages[i].id)) MarkMessageVar(c.messages[i].id, "read");
             ScrollReadToBottom();
+            RefreshActionBar(c); // 2.12: contextual action buttons (@chatActions)
             // 2.11: entering the chat may resume a held line (the script waits
             // until the player is inside) or jump to a pending live dialogue.
             if (engine.Player != null) engine.Player.OnChatEntered(chatId);
@@ -1059,11 +1136,14 @@ namespace VNKit
             listLayer.SetActive(false);
             photosLayer.SetActive(false);
             homeLayer.SetActive(false);
+            SetAppLayers(s);
             backButton.gameObject.SetActive(true);
             statusText.gameObject.SetActive(false);
         }
 
-        void BuildPhotos()
+        /// <summary>2.12: the Gallery shows both chat photo attachments and
+        /// items added via @gallery (with sender/date/location/description meta).</summary>
+        void BuildGallery()
         {
             ClearChildren(photosContent);
             bool any = false;
@@ -1074,6 +1154,7 @@ namespace VNKit
                     any = true;
                     CreatePhotoBubble(photosContent, m);
                 }
+            any = BuildGalleryItems(photosContent) || any;
             if (!any)
                 UIFactory.Text(photosContent, "Empty", VNLoc.T("phone.nophotos"), 24,
                     TextAnchor.MiddleCenter, SubTextColor);
@@ -1140,6 +1221,8 @@ namespace VNKit
             currentChatId = chatId;
             if (currentChatId == null || !chats.ContainsKey(currentChatId))
                 currentChatId = chatOrder.Count > 0 ? chatOrder[chatOrder.Count - 1] : null;
+            pendingChoiceTexts = null; // 2.12.2: resumed flow re-runs the @choice
+            pendingChoiceCb = null;
             var cur = CurrentChat();
             Contact = cur != null ? cur.contact : null;
             ApplyPosition(pos);
@@ -1189,6 +1272,8 @@ namespace VNKit
             currentChatId = chatId;
             if (currentChatId == null || !chats.ContainsKey(currentChatId))
                 currentChatId = chatOrder.Count > 0 ? chatOrder[chatOrder.Count - 1] : null;
+            pendingChoiceTexts = null; // 2.12.2: resumed flow re-runs the @choice
+            pendingChoiceCb = null;
             var cur = CurrentChat();
             Contact = cur != null ? cur.contact : null;
             ApplyPosition(pos);

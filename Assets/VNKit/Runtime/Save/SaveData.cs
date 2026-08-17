@@ -27,6 +27,7 @@ namespace VNKit
     [Serializable]
     public class VNPhoneMessage
     {
+        public string id = "";
         public bool incoming;      // true = left bubble (contact), false = right bubble (player)
         public string speaker;
         public string text;        // message text, or the sprite address for kind==1
@@ -65,6 +66,53 @@ namespace VNKit
         public bool done;      // finished via @chatend
     }
 
+    /// <summary>2.12: one entry of the phone Notes app (@note add).</summary>
+    [Serializable]
+    public class VNPhoneNote
+    {
+        public string id = "";
+        public string text = "";
+        public bool important;
+        public string category = "general"; // general/people/places/events/evidence/secrets (2.12.1)
+        public string source = "";          // who/what the note came from (2.12.1)
+    }
+
+    [Serializable]
+    public class VNScheduleEvent
+    {
+        public string id = "";
+        public string time = "";
+        public string title = "";
+    }
+
+    [Serializable]
+    public class VNPhoneGalleryItem
+    {
+        public string id = "";       // 2.12.1: variable-safe id → gallery.<id>.viewed/.locked
+        public string address = "";
+        public string sender = "";
+        public string date = "";
+        public string location = "";
+        public string desc = "";
+        public string tag = "";
+        public bool important;
+        public bool viewed;          // 2.12.1: the player opened it in the viewer
+        public bool locked;          // 2.12.1: hidden behind a lock until @gallery unlock
+    }
+
+    // A contextual chat action button offered inside a chat (@chatActions).
+    [Serializable]
+    public class VNPhoneAction
+    {
+        public string chatId = "";
+        public string text = "";
+        public string label = "";
+        public string condition = "";
+        public string doAssign = "";
+        public bool once = true; // picked action disappears (default); once:0 keeps it
+        public bool used;
+    }
+
     /// <summary>Everything needed to resume a play session. Serialized with JsonUtility.</summary>
     [Serializable]
     public class VNSaveData
@@ -85,6 +133,11 @@ namespace VNKit
         public bool phoneChatMode; // 2.8: phone-as-dialogue-UI chat mode
         public bool phoneMenuActive; // 2.9: phone menu vs classic box menu (@phoneOn/@phoneOff)
         public List<VNChatDialogue> phoneDialogues = new List<VNChatDialogue>(); // 2.11: registered live chat dialogues
+        public List<VNPhoneNote> phoneNotes = new List<VNPhoneNote>();
+        public List<VNScheduleEvent> phoneSchedule = new List<VNScheduleEvent>();
+        public List<VNPhoneGalleryItem> phoneGallery = new List<VNPhoneGalleryItem>();
+        public List<VNPhoneAction> phoneActions = new List<VNPhoneAction>();
+        public List<string> phoneHiddenApps = new List<string>();
         public int chatHubReturn = -1; // 2.11: @waitchat hub position for @chatend
         public string preview;
         public string timestamp;

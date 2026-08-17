@@ -10,6 +10,7 @@ namespace VNKit
         Bgm, StopBgm, Sfx, Voice, StopVoice,
         Cg, Minigame, Input,
         Phone, Typing, Fade, Photo, PhoneMsg, ChatTarget, PhoneMenuToggle, WaitChat, ChatEnd,
+        ChatActions, PhoneHub, Note, Schedule, Gallery, PhoneGame, PhoneApp, Message,
         Choice, Goto, Set, If, Wait, End, Custom
     }
 

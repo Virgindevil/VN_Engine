@@ -80,5 +80,11 @@ namespace VNKit
         {
             return !string.IsNullOrEmpty(id) && factories.ContainsKey(id);
         }
+
+        /// <summary>2.12: ids of every registered mini-game (the phone Games tab).</summary>
+        public static List<string> GetIds()
+        {
+            return new List<string>(factories.Keys);
+        }
     }
 }

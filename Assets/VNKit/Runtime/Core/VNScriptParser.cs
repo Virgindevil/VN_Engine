@@ -186,6 +186,19 @@ namespace VNKit
                     ParseChoice(cmd, body.Substring(name.Length));
                     break;
 
+                // 2.12 — phone gameplay API
+                case "chatActions":
+                    cmd.Type = VNCommandType.ChatActions;
+                    ParseChatActions(cmd, body.Substring(name.Length));
+                    break;
+                case "phonehub":  cmd.Type = VNCommandType.PhoneHub;  FillParams(cmd, tokens); break;
+                case "note":      cmd.Type = VNCommandType.Note;      FillPositional(cmd, tokens); break;
+                case "schedule":  cmd.Type = VNCommandType.Schedule;  FillPositional(cmd, tokens); break;
+                case "gallery":   cmd.Type = VNCommandType.Gallery;   FillPositional(cmd, tokens); break;
+                case "phoneGame": cmd.Type = VNCommandType.PhoneGame; FillPositional(cmd, tokens); break;
+                case "phoneapp":  cmd.Type = VNCommandType.PhoneApp;  FillPositional(cmd, tokens); break;
+                case "message":   cmd.Type = VNCommandType.Message;   FillPositional(cmd, tokens); break;
+
                 default:
                     cmd.Type = VNCommandType.Custom;
                     cmd.Name = name;
@@ -301,6 +314,31 @@ namespace VNKit
 
                 cmd.Options.Add(opt);
             }
+        }
+
+        /// <summary>
+        /// Parses "@chatActions chat:rin [once:0] "Text" goto:Label [if:expr] [do:assign] | ..."
+        /// or the "@chatActions chat:rin clear" form. Leading key:value params are read
+        /// from the raw remainder (their values are single words), the option list itself
+        /// reuses the @choice parser.
+        /// </summary>
+        static void ParseChatActions(VNCommand cmd, string remainder)
+        {
+            string rest = remainder.Trim();
+            while (rest.Length > 0 && rest[0] != '"' && !rest.StartsWith("clear"))
+            {
+                string word = ReadWord(rest, 0);
+                int colon = word.IndexOf(':');
+                if (colon <= 0 || !IsKey(word.Substring(0, colon))) break;
+                cmd.Params[word.Substring(0, colon)] = word.Substring(colon + 1);
+                rest = rest.Substring(word.Length).TrimStart();
+            }
+            if (rest.StartsWith("clear"))
+            {
+                cmd.Params["clear"] = "1";
+                return;
+            }
+            ParseChoice(cmd, rest);
         }
 
         /// <summary>Reads a parameter value (expression/assignments) up to the next keyword or end.</summary>

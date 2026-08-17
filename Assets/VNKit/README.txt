@@ -1,4 +1,4 @@
-VNKit 2.11.1 — lightweight visual novel engine for Unity 2022.3+
+VNKit 2.12.1 — lightweight visual novel engine for Unity 2022.3+
 ==============================================================
 
 REQUIREMENTS

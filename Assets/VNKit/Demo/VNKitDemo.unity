@@ -166,21 +166,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075103fae8a46c69fce87e6efd9e022, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startScript: {fileID: 9027929339269108002, guid: 1b5c35e136016164c8440b91f5bfd2b2, type: 3}
+  startScript: {fileID: 9027929339269108002, guid: be5a4d604d4b4ce39d1884919078b92e, type: 3}
   additionalScripts:
-  - {fileID: 9027929339269108002, guid: 4ee1802946b66354eb9d5cdd4d6462ac, type: 3}
-  - {fileID: 9027929339269108002, guid: f07b62c23192d6886fad57b87db26d4d, type: 3}
+  - {fileID: 4900000, guid: 662af4f1d1a344f280d0cc7adf0730bd, type: 3}
+  - {fileID: 4900000, guid: 8d5f71ee88594f4fbb35217571265029, type: 3}
   resourcesRoot: VN
   showTitleScreen: 1
   gameTitle: VNKit Demo
-  titleBackground: {fileID: 21300000, guid: 2d4e53b0c65d4514c92990d9fed4c3bc, type: 3}
-  titleLogo: {fileID: 21300000, guid: 7f484c07f98c78045af4b5dc4ed34b85, type: 3}
-  uiTheme: {fileID: 11400000, guid: 6f51968ee4f41b043b3ef8fe1793fc15, type: 2}
+  titleBackground: {fileID: 0}
+  titleLogo: {fileID: 0}
+  uiTheme: {fileID: 0}
   usePlaceholderGraphics: 1
   dialoguePanelColor: {r: 0, g: 0, b: 0, a: 0.72}
   accentColor: {r: 0.85, g: 0.45, b: 0.65, a: 1}
   useOsEmojiFont: 1
-  usePhoneMenu: 1
+  usePhoneMenu: 0
   phoneSkin: {fileID: 0}
   phoneSkinMale: {fileID: 0}
   phoneSkinFemale: {fileID: 0}
@@ -195,9 +195,7 @@ MonoBehaviour:
   chatPriorities: []
   memories: []
   showLoadingScreen: 1
-  preloadAddresses:
-  - VN/CG/rin/selfie1
-  - VN/CG/rin/selfie2
+  preloadAddresses: []
   spineCharacters: []
   spineCgs: []
   galleryCgs:
@@ -205,6 +203,7 @@ MonoBehaviour:
   - RooftopNight
   saveSeenText: 1
   enableRollback: 1
+  enableDebugTools: 0
   Settings:
     masterVolume: 1
     bgmVolume: 0.8
@@ -221,7 +220,7 @@ MonoBehaviour:
     autoKey: 97
     rollbackKey: 280
     hideKey: 104
---- !u!1 &1584022415
+--- !u!1 &124351684
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -229,9 +228,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1584022418}
-  - component: {fileID: 1584022417}
-  - component: {fileID: 1584022416}
+  - component: {fileID: 124351687}
+  - component: {fileID: 124351686}
+  - component: {fileID: 124351685}
   m_Layer: 0
   m_Name: Camera
   m_TagString: Untagged
@@ -239,21 +238,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &1584022416
+--- !u!81 &124351685
 AudioListener:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1584022415}
+  m_GameObject: {fileID: 124351684}
   m_Enabled: 1
---- !u!20 &1584022417
+--- !u!20 &124351686
 Camera:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1584022415}
+  m_GameObject: {fileID: 124351684}
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
@@ -298,13 +297,13 @@ Camera:
   m_OcclusionCulling: 1
   m_StereoConvergence: 10
   m_StereoSeparation: 0.022
---- !u!4 &1584022418
+--- !u!4 &124351687
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1584022415}
+  m_GameObject: {fileID: 124351684}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 488.25, y: 274.5, z: 0}
@@ -318,4 +317,4 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 100001}
-  - {fileID: 1584022418}
+  - {fileID: 124351687}

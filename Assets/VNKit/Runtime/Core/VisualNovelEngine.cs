@@ -83,6 +83,8 @@ namespace VNKit
         public bool saveSeenText = true;
         [Tooltip("Mouse wheel up / rollback hotkey rewinds one line (Ren'Py / Naninovel style).")]
         public bool enableRollback = true;
+        [Tooltip("Developer tools: F8 toggles the debug panel (variables, phone data). Keep OFF for release builds — the panel is never shown otherwise.")]
+        public bool enableDebugTools = false;
 
         public VNSettings Settings = new VNSettings();
 
@@ -107,6 +109,8 @@ namespace VNKit
         public QuickMenuUI QuickMenu { get; private set; }
         public LoadingUI Loading { get; private set; }
         public PauseMenuUI PauseMenu { get; private set; }
+        /// <summary>2.12: developer debug panel (F8); null unless enableDebugTools.</summary>
+        public DebugPanelUI DebugPanel { get; private set; }
         /// <summary>Current in-game menu style: true = phone menu, false = classic
         /// box menu. Starts from usePhoneMenu; @phoneOn/@phoneOff switch it at runtime.</summary>
         public bool PhoneMenuActive { get { return phoneMenuActive; } }
@@ -198,6 +202,9 @@ namespace VNKit
             Title = new TitleUI(overlayRT, this);
             Loading = new LoadingUI(overlayRT, gameTitle);
             phoneMenuActive = usePhoneMenu;
+            // 2.12: developer debug panel (F8) — created only when enabled,
+            // never part of the release UI.
+            if (enableDebugTools) DebugPanel = new DebugPanelUI(overlayRT, this);
 
             Audio = new VNAudioManager(transform, this);
             Player = new ScriptPlayer(this, VNRunner.Create("VNKit.Player", transform));
@@ -314,6 +321,16 @@ namespace VNKit
                 activeMinigame.Tick(Time.deltaTime);
                 return;
             }
+
+            if (Phone != null) Phone.Tick(); // 2.12: action bar / «Далее» upkeep
+
+            // 2.12: developer debug panel (never in release UI — enableDebugTools only).
+            if (DebugPanel != null && VNInput.KeyPressed(KeyCode.F8))
+            {
+                if (DebugPanel.IsOpen) DebugPanel.Hide(); else DebugPanel.Show();
+                return;
+            }
+            if (DebugPanel != null && DebugPanel.IsOpen) { Player.SetSkipHeld(false); return; }
 
             // While a text input (@input) is open, every hotkey belongs to the
             // input field — typing 'a' must not toggle auto-mode etc.
@@ -850,6 +867,39 @@ namespace VNKit
             game.Start(ctx);
         }
 
+        /// <summary>True while a mini-game overlay owns the screen.</summary>
+        public bool MinigameActive { get { return activeMinigame != null; } }
+
+        /// <summary>2.12: launch a registered mini-game from the phone Games tab.
+        /// No script command involved — the result only updates the
+        /// phoneGame.&lt;id&gt;.plays / .last variables.</summary>
+        public void StartPhoneGame(string id)
+        {
+            if (activeMinigame != null || !VNMinigames.Exists(id)) return;
+            var cmd = new VNCommand { Type = VNCommandType.PhoneGame, Name = id };
+            StartMinigame(cmd, delegate (bool success, string value) { RecordPhoneGame(id, success, value); });
+        }
+
+        /// <summary>2.12: phoneGame.&lt;id&gt;.plays += 1; phoneGame.&lt;id&gt;.last = result
+        /// (numeric when the game reports a number, text otherwise, 1/0 without a value).</summary>
+        public void RecordPhoneGame(string id, bool success, string value)
+        {
+            if (string.IsNullOrEmpty(id) || Variables == null) return;
+            Variables.Set("phoneGame." + id + ".plays",
+                VNValue.FromNumber(Variables.Get("phoneGame." + id + ".plays").ToNumber() + 1));
+            if (string.IsNullOrEmpty(value))
+                Variables.Set("phoneGame." + id + ".last", VNValue.FromNumber(success ? 1 : 0));
+            else
+            {
+                double d;
+                if (double.TryParse(value, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out d))
+                    Variables.Set("phoneGame." + id + ".last", VNValue.FromNumber(d));
+                else
+                    Variables.Set("phoneGame." + id + ".last", VNValue.FromText(value));
+            }
+        }
+
         // ============================== Rollback ==============================
 
         /// <summary>Called by the ScriptPlayer before every Say / Choice.</summary>
@@ -875,7 +925,13 @@ namespace VNKit
                 phoneChatMode = Phone != null && Phone.ChatMode,
                 phoneMenuActive = phoneMenuActive,
                 phoneDialogues = Phone != null ? Phone.GetDialogues() : null,
-                chatHubReturn = Player != null ? Player.ChatHubReturn : -1
+                chatHubReturn = Player != null ? Player.ChatHubReturn : -1,
+                // 2.12: phone gameplay apps are mutated in place — snapshots need copies
+                phoneNotes = Phone != null ? Phone.GetNotes() : null,
+                phoneSchedule = Phone != null ? Phone.GetSchedule() : null,
+                phoneGallery = Phone != null ? Phone.GetGalleryItems() : null,
+                phoneActions = Phone != null ? Phone.GetActions() : null,
+                phoneHiddenApps = Phone != null ? Phone.GetHiddenApps() : null
             });
         }
 
@@ -981,6 +1037,11 @@ namespace VNKit
             // Phone messenger (chat history trims back to the snapshot point).
             if (Phone != null) Phone.RestoreSnapshot(snap.phoneOpen, snap.phoneChat, snap.phonePos, snap.phoneChatStates, snap.phoneChatMode);
             if (Phone != null) Phone.RestoreDialogues(snap.phoneDialogues);
+            if (Phone != null && snap.phoneNotes != null) Phone.RestoreNotes(snap.phoneNotes);
+            if (Phone != null && snap.phoneSchedule != null) Phone.RestoreSchedule(snap.phoneSchedule);
+            if (Phone != null && snap.phoneGallery != null) Phone.RestoreGalleryItems(snap.phoneGallery);
+            if (Phone != null && snap.phoneActions != null) Phone.RestoreActions(snap.phoneActions);
+            if (Phone != null && snap.phoneHiddenApps != null) Phone.RestoreHiddenApps(snap.phoneHiddenApps);
             if (Player != null) Player.ChatHubReturn = snap.chatHubReturn;
             SetPhoneMenu(snap.phoneMenuActive);
 
@@ -1020,17 +1081,19 @@ namespace VNKit
             if (Player.State == PlayerState.WaitingMinigame) { VNLog.Warn("Cannot save during a mini-game."); return false; }
             if (Player.State == PlayerState.WaitingTextInput) { VNLog.Warn("Cannot save during text input."); return false; }
             if (Player.State != PlayerState.WaitingInput && Player.State != PlayerState.Running
-                && Player.State != PlayerState.WaitingChat && Player.State != PlayerState.WaitingChatEnter)
+                && Player.State != PlayerState.WaitingChat && Player.State != PlayerState.WaitingChatEnter
+                && Player.State != PlayerState.WaitingChatHub)
             {
                 VNLog.Warn("Nothing to save right now.");
                 return false;
             }
             if (Dialogue.IsTyping) Dialogue.CompleteLine();
 
-            // Parked at @waitchat / holding a chat line: resume by re-running that
-            // command — the hub re-parks itself (or passes, if dialogues finished).
+            // Parked at @waitchat/@phonehub / holding a chat line: resume by re-running
+            // that command — the hub re-parks itself (or passes, if dialogues finished).
             int resumeIndex = Player.NextCommandIndex;
-            if (Player.State == PlayerState.WaitingChat || Player.State == PlayerState.WaitingChatEnter)
+            if (Player.State == PlayerState.WaitingChat || Player.State == PlayerState.WaitingChatEnter
+                || Player.State == PlayerState.WaitingChatHub)
                 resumeIndex = Mathf.Max(0, resumeIndex - 1);
 
             var data = new VNSaveData
@@ -1051,6 +1114,11 @@ namespace VNKit
                 phoneMenuActive = phoneMenuActive,
                 phoneDialogues = Phone != null ? Phone.GetDialogues() : new List<VNChatDialogue>(),
                 chatHubReturn = Player != null ? Player.ChatHubReturn : -1,
+                phoneNotes = Phone != null ? Phone.GetNotes() : new List<VNPhoneNote>(),
+                phoneSchedule = Phone != null ? Phone.GetSchedule() : new List<VNScheduleEvent>(),
+                phoneGallery = Phone != null ? Phone.GetGalleryItems() : new List<VNPhoneGalleryItem>(),
+                phoneActions = Phone != null ? Phone.GetActions() : new List<VNPhoneAction>(),
+                phoneHiddenApps = Phone != null ? Phone.GetHiddenApps() : new List<string>(),
                 preview = backlog.Count > 0 ? backlog[backlog.Count - 1].text : "",
                 timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
             };
@@ -1188,6 +1256,12 @@ namespace VNKit
                 Phone.CloseMenu();
                 Phone.Restore(data.phoneOpen, data.phoneChat, data.phonePos, data.phoneChats, data.phoneChatMode);
                 Phone.RestoreDialogues(data.phoneDialogues);
+                // 2.12 phone apps (null in pre-2.12 saves → keep the safe defaults)
+                Phone.RestoreNotes(data.phoneNotes);
+                Phone.RestoreSchedule(data.phoneSchedule);
+                Phone.RestoreGalleryItems(data.phoneGallery);
+                Phone.RestoreActions(data.phoneActions);
+                Phone.RestoreHiddenApps(data.phoneHiddenApps);
             }
             if (Player != null) Player.ChatHubReturn = data.chatHubReturn;
 

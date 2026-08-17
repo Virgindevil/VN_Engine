@@ -30,6 +30,11 @@ namespace VNKit
             public bool phoneMenuActive;                 // 2.9 menu style (@phoneOn/@phoneOff)
             public List<VNChatDialogue> phoneDialogues;  // 2.11 live chat dialogues
             public int chatHubReturn;                    // 2.11 @waitchat hub position
+            public List<VNPhoneNote> phoneNotes;         // 2.12 notes app
+            public List<VNScheduleEvent> phoneSchedule;  // 2.12 schedule app
+            public List<VNPhoneGalleryItem> phoneGallery;// 2.12 in-phone gallery
+            public List<VNPhoneAction> phoneActions;     // 2.12 contextual chat actions
+            public List<string> phoneHiddenApps;         // 2.12 apps hidden via @phoneapp
         }
 
         readonly List<Snapshot> stack = new List<Snapshot>();

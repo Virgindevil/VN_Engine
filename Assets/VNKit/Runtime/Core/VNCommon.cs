@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace VNKit
 {
-    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, WaitingMinigame, WaitingTextInput, WaitingChatEnter, WaitingChat, Ended }
+    public enum PlayerState { Idle, Running, WaitingInput, WaitingChoice, WaitingTimer, WaitingAsset, WaitingMinigame, WaitingTextInput, WaitingChatEnter, WaitingChat, WaitingChatHub, Ended }
 
     [Serializable]
     public class VNSettings
