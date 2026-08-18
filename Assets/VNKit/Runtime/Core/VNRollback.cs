@@ -27,6 +27,7 @@ namespace VNKit
             // rollback truncates each chat back to its count at the snapshot point.
             public Dictionary<string, VNPhoneChatSnap> phoneChatStates;
             public bool phoneChatMode;                   // 2.8 chat mode flag
+            public bool phoneDialogueLock;               // 2.12.2 live-dialogue lock
             public bool phoneMenuActive;                 // 2.9 menu style (@phoneOn/@phoneOff)
             public List<VNChatDialogue> phoneDialogues;  // 2.11 live chat dialogues
             public int chatHubReturn;                    // 2.11 @waitchat hub position

@@ -166,7 +166,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075103fae8a46c69fce87e6efd9e022, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startScript: {fileID: 9027929339269108002, guid: be5a4d604d4b4ce39d1884919078b92e, type: 3}
+  startScript: {fileID: 9027929339269108002, guid: 70b538a40ffb9ef458b1dc345c9291c4, type: 3}
   additionalScripts:
   - {fileID: 4900000, guid: 662af4f1d1a344f280d0cc7adf0730bd, type: 3}
   - {fileID: 4900000, guid: 8d5f71ee88594f4fbb35217571265029, type: 3}

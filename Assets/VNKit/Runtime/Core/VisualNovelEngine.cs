@@ -347,7 +347,13 @@ namespace VNKit
                 else if (BacklogPanel.IsOpen) BacklogPanel.Hide();
                 else if (SaveLoadPanel.IsOpen) SaveLoadPanel.Hide();
                 else if (PhotoViewer != null && PhotoViewer.IsOpen) PhotoViewer.Hide();
-                else if (Phone != null && Phone.IsMenuOpen) Phone.CloseMenu();
+                // 2.12.2: a locked live dialogue keeps the phone on screen —
+                // Esc then opens the pause menu instead (escape hatch via title).
+                else if (Phone != null && Phone.IsMenuOpen)
+                {
+                    if (!Phone.DialogueLock) Phone.CloseMenu();
+                    else if (PauseMenu != null) PauseMenu.Show();
+                }
                 else if (PauseMenu != null && PauseMenu.IsOpen) PauseMenu.Hide();
                 else if (!Title.IsOpen && Player.State != PlayerState.Idle && Player.State != PlayerState.Ended)
                     ToggleInGameMenu();
@@ -418,7 +424,8 @@ namespace VNKit
         /// chat-mode conversation is running) or the classic box menu.</summary>
         void ToggleInGameMenu()
         {
-            if (Phone != null && Phone.IsMenuOpen) { Phone.CloseMenu(); return; }
+            // 2.12.2: a locked live dialogue keeps the phone on screen.
+            if (Phone != null && Phone.IsMenuOpen) { if (!Phone.DialogueLock) Phone.CloseMenu(); return; }
             if (PauseMenu != null && PauseMenu.IsOpen) { PauseMenu.Hide(); return; }
             if (IsModalOpen()) return;
             if (Player.State == PlayerState.Idle || Player.State == PlayerState.Ended) return;
@@ -925,6 +932,7 @@ namespace VNKit
                 phoneChatMode = Phone != null && Phone.ChatMode,
                 phoneMenuActive = phoneMenuActive,
                 phoneDialogues = Phone != null ? Phone.GetDialogues() : null,
+                phoneDialogueLock = Phone != null && Phone.DialogueLock,
                 chatHubReturn = Player != null ? Player.ChatHubReturn : -1,
                 // 2.12: phone gameplay apps are mutated in place — snapshots need copies
                 phoneNotes = Phone != null ? Phone.GetNotes() : null,
@@ -1037,6 +1045,7 @@ namespace VNKit
             // Phone messenger (chat history trims back to the snapshot point).
             if (Phone != null) Phone.RestoreSnapshot(snap.phoneOpen, snap.phoneChat, snap.phonePos, snap.phoneChatStates, snap.phoneChatMode);
             if (Phone != null) Phone.RestoreDialogues(snap.phoneDialogues);
+            if (Phone != null) Phone.DialogueLock = snap.phoneDialogueLock; // 2.12.2
             if (Phone != null && snap.phoneNotes != null) Phone.RestoreNotes(snap.phoneNotes);
             if (Phone != null && snap.phoneSchedule != null) Phone.RestoreSchedule(snap.phoneSchedule);
             if (Phone != null && snap.phoneGallery != null) Phone.RestoreGalleryItems(snap.phoneGallery);
@@ -1113,6 +1122,7 @@ namespace VNKit
                 phoneChatMode = Phone != null && Phone.ChatMode,
                 phoneMenuActive = phoneMenuActive,
                 phoneDialogues = Phone != null ? Phone.GetDialogues() : new List<VNChatDialogue>(),
+                phoneDialogueLock = Phone != null && Phone.DialogueLock,
                 chatHubReturn = Player != null ? Player.ChatHubReturn : -1,
                 phoneNotes = Phone != null ? Phone.GetNotes() : new List<VNPhoneNote>(),
                 phoneSchedule = Phone != null ? Phone.GetSchedule() : new List<VNScheduleEvent>(),
@@ -1262,6 +1272,7 @@ namespace VNKit
                 Phone.RestoreGalleryItems(data.phoneGallery);
                 Phone.RestoreActions(data.phoneActions);
                 Phone.RestoreHiddenApps(data.phoneHiddenApps);
+                Phone.DialogueLock = data.phoneDialogueLock; // 2.12.2
             }
             if (Player != null) Player.ChatHubReturn = data.chatHubReturn;
 

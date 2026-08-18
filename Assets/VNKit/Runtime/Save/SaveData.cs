@@ -133,6 +133,7 @@ namespace VNKit
         public bool phoneChatMode; // 2.8: phone-as-dialogue-UI chat mode
         public bool phoneMenuActive; // 2.9: phone menu vs classic box menu (@phoneOn/@phoneOff)
         public List<VNChatDialogue> phoneDialogues = new List<VNChatDialogue>(); // 2.11: registered live chat dialogues
+        public bool phoneDialogueLock; // 2.12.2: a live dialogue holds the player in the chat
         public List<VNPhoneNote> phoneNotes = new List<VNPhoneNote>();
         public List<VNScheduleEvent> phoneSchedule = new List<VNScheduleEvent>();
         public List<VNPhoneGalleryItem> phoneGallery = new List<VNPhoneGalleryItem>();

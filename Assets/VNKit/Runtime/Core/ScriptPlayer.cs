@@ -403,6 +403,9 @@ namespace VNKit
                 {
                     hubReturnIndex = index - 1; // re-run the hub command after @chatend
                     engine.Phone.SetActiveChat(chatId, null);
+                    // 2.12.2: a live dialogue is a commitment — the player stays
+                    // in the chat until the dialogue's @chatend.
+                    engine.Phone.DialogueLock = true;
                     if (DoGoto(label)) { State = PlayerState.Running; Step(); }
                 }
             }
@@ -440,6 +443,7 @@ namespace VNKit
                     State = PlayerState.WaitingChat;
                     return true;
                 }
+            if (engine.Phone != null) engine.Phone.DialogueLock = false; // 2.12.2 safety net
             return false;
         }
 
@@ -448,6 +452,7 @@ namespace VNKit
         void DoChatEnd(VNCommand cmd)
         {
             engine.CaptureRollback(script.Name, index - 1);
+            if (engine.Phone != null) engine.Phone.DialogueLock = false; // 2.12.2
             if (engine.Phone != null) engine.Phone.CompleteDialogue(engine.Phone.CurrentChatId);
             string gt = engine.Variables.Expand(cmd.Get("goto"));
             if (!string.IsNullOrEmpty(gt))
@@ -471,6 +476,7 @@ namespace VNKit
         {
             if (engine.Phone == null) return false;
             if (!engine.Phone.IsMenuOpen) engine.Phone.OpenChats(0.4f);
+            engine.Phone.DialogueLock = false; // 2.12.2 safety net
             State = PlayerState.WaitingChatHub;
             return true;
         }

@@ -81,6 +81,25 @@ namespace VNKit
         /// keeps running while it is open, every conversation happens inside the
         /// Chats tab like in a real messenger.</summary>
         public bool ChatMode { get { return chatMode; } }
+
+        /// <summary>2.12.2: a live dialogue (@online … goto:) locks the player
+        /// inside the chat until @chatend — no back button, no pocketing the
+        /// phone, toasts don't yank them out. Set/cleared by the ScriptPlayer;
+        /// any hub (@waitchat/@phonehub) also clears it as a safety net.</summary>
+        public bool DialogueLock
+        {
+            get { return dialogueLock; }
+            set { dialogueLock = value; UpdateBackButton(); }
+        }
+        bool dialogueLock;
+
+        void UpdateBackButton()
+        {
+            if (backButton == null) return;
+            // While the lock is on, the chat's back button is hidden — the only
+            // way out of a live dialogue is finishing it.
+            backButton.gameObject.SetActive(!(dialogueLock && currentScreen == Screen.ReadChat));
+        }
         public string Contact { get; private set; }
         public string CurrentChatId { get { return currentChatId; } }
         public string Position { get; private set; }
@@ -290,6 +309,7 @@ namespace VNKit
 
         void OnToastTapped()
         {
+            if (dialogueLock) return; // 2.12.2: finish the live dialogue first
             toast.SetActive(false);
             string id = toastChatId;
             OpenMenu();
@@ -300,6 +320,9 @@ namespace VNKit
 
         void ShowToast(Chat chat, VNPhoneMessage msg)
         {
+            // 2.12.2: no banners during a locked live dialogue — the player
+            // can't leave the chat anyway, so an untappable toast is pure noise.
+            if (dialogueLock) return;
             toastChatId = chat.id;
             if (toast == null || toastText == null) return;
             // msg == null → an "online" notification (@online ... goto:)
@@ -508,6 +531,7 @@ namespace VNKit
             doneDialogues.Clear();
             pendingChoiceTexts = null; // 2.12.2: in-phone @choice
             pendingChoiceCb = null;
+            DialogueLock = false;      // 2.12.2: live-dialogue lock
             ResetAppsData(); // 2.12: notes / schedule / gallery / actions / hidden apps
             currentChatId = null;
             chatMode = false;
@@ -956,6 +980,8 @@ namespace VNKit
 
         void OnBackPressed()
         {
+            // 2.12.2: a live dialogue keeps the player in the chat until @chatend.
+            if (dialogueLock && currentScreen == Screen.ReadChat) return;
             switch (currentScreen)
             {
                 case Screen.ReadChat: ShowScreen(Screen.ChatList); break;
@@ -1138,6 +1164,7 @@ namespace VNKit
             homeLayer.SetActive(false);
             SetAppLayers(s);
             backButton.gameObject.SetActive(true);
+            UpdateBackButton(); // 2.12.2: the dialogue lock may re-hide it
             statusText.gameObject.SetActive(false);
         }
 
