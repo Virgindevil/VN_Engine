@@ -61,8 +61,63 @@ namespace VNKit
             if (runner != null) runner.StopAllCoroutines();
             finishWait = false;
             currentOptions = null;
+            pendingSay = null;
             script = null;
             State = PlayerState.Idle;
+        }
+
+        /// <summary>
+        /// After the UI language changes: load the matching .vns variant of the
+        /// current script and refresh the line / choice the player is looking at.
+        /// Does not re-run commands (variables, photos, @set stay as they are).
+        /// Variants should keep the same labels and command order.
+        /// </summary>
+        public void RelocalizeScript()
+        {
+            if (script == null || engine == null) return;
+            var next = engine.GetScript(script.Name);
+            if (next == null) return;
+            script = next;
+
+            if (index <= 0 || index > script.Commands.Count) return;
+            var cmd = script.Commands[index - 1];
+
+            if (pendingSay != null && cmd.Type == VNCommandType.Say)
+                pendingSay = cmd;
+
+            if (State == PlayerState.WaitingChat || State == PlayerState.WaitingChatHub)
+            {
+                if (cmd.Type == VNCommandType.WaitChat)
+                {
+                    string remind = cmd.Get("remind");
+                    if (!string.IsNullOrEmpty(remind))
+                        ChatReminder = engine.Variables.Expand(remind);
+                }
+                return;
+            }
+
+            if ((State == PlayerState.WaitingInput || State == PlayerState.WaitingChatEnter)
+                && cmd.Type == VNCommandType.Say)
+            {
+                RefreshPresentedSay(cmd);
+                return;
+            }
+
+            if (State == PlayerState.WaitingChoice && cmd.Type == VNCommandType.Choice)
+                DoChoice(cmd, false);
+        }
+
+        void RefreshPresentedSay(VNCommand cmd)
+        {
+            string speaker = engine.Variables.Expand(cmd.Speaker);
+            string text = engine.Variables.Expand(cmd.Text);
+            engine.ReplaceLastBacklog(speaker, text);
+            if (engine.Dialogue != null && engine.Dialogue.IsOpen)
+            {
+                engine.Dialogue.PlayLine(speaker, text, OnLineFinished);
+                if (State == PlayerState.WaitingInput)
+                    engine.Dialogue.CompleteLine();
+            }
         }
 
         public void SetSkipHeld(bool held) { skipHeld = held; }
@@ -825,9 +880,9 @@ namespace VNKit
             engine.FadeScreen(cmd.Get("dir", "out") == "out", time);
         }
 
-        bool DoChoice(VNCommand cmd)
+        bool DoChoice(VNCommand cmd, bool captureRollback = true)
         {
-            engine.CaptureRollback(script.Name, index - 1);
+            if (captureRollback) engine.CaptureRollback(script.Name, index - 1);
 
             currentOptions = new List<VNChoiceOption>();
             var texts = new List<string>();
@@ -847,7 +902,10 @@ namespace VNKit
             // at the bottom of the chat — the player never leaves the messenger.
             // Everywhere else the classic full-screen overlay is used.
             if (engine.Phone != null && engine.Phone.ChatMode && engine.Phone.CurrentChatId != null)
+            {
+                engine.Phone.HideChoice();
                 engine.Phone.ShowChoice(texts, NotifyChoicePicked);
+            }
             else
                 engine.Choice.Show(texts, NotifyChoicePicked);
             return true;
@@ -938,6 +996,9 @@ namespace VNKit
                 scriptName = label.Substring(0, dot);
                 labelName = label.Substring(dot + 1);
             }
+
+            if (!string.IsNullOrEmpty(scriptName))
+                scriptName = VisualNovelEngine.CanonicalScriptName(scriptName);
 
             VNScript target = script;
             if (!string.IsNullOrEmpty(scriptName) && (script == null || scriptName != script.Name))
