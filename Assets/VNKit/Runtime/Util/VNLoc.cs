@@ -5,10 +5,12 @@ namespace VNKit
     /// <summary>
     /// Tiny built-in localization for engine UI strings (Naninovel-style).
     /// Ships with English and Russian; add more languages at runtime:
-    ///   VNLoc.Add("ja", new Dictionary&lt;string,string&gt; { {"title.newgame","はじめから"}, ... });
+    ///   VNLoc.Add("ja", new Dictionary<string,string> { {"title.newgame","はじめから"}, ... });
     /// The active language follows VNSettings.language. Script text localization works
     /// through script variants: register "Demo.ru" (Demo.ru.vns) next to "Demo" —
-    /// the engine picks the variant matching the current language automatically.
+    /// GetScript strips any language suffix from the requested name and picks the
+    /// variant for the current language. Changing language in settings also swaps
+    /// the script that is already playing.
     /// </summary>
     public static class VNLoc
     {
@@ -68,7 +70,6 @@ namespace VNKit
                 {"phone.app.chats", "Chats"}, {"phone.app.photos", "Photos"}, {"phone.app.backlog", "Backlog"},
                 {"phone.app.save", "Save"}, {"phone.app.load", "Load"},
                 {"phone.app.settings", "Settings"}, {"phone.app.title", "Main menu"},
-                // 2.12 — phone gameplay apps
                 {"phone.app.gallery", "Gallery"}, {"phone.app.contacts", "Contacts"},
                 {"phone.app.notes", "Notes"}, {"phone.app.schedule", "Schedule"}, {"phone.app.games", "Games"},
                 {"phone.gallery", "Gallery"}, {"phone.contacts", "Contacts"},
@@ -125,7 +126,6 @@ namespace VNKit
                 {"phone.app.chats", "Чаты"}, {"phone.app.photos", "Фото"}, {"phone.app.backlog", "История"},
                 {"phone.app.save", "Сохранить"}, {"phone.app.load", "Загрузить"},
                 {"phone.app.settings", "Настройки"}, {"phone.app.title", "В меню"},
-                // 2.12 — игровые приложения телефона
                 {"phone.app.gallery", "Галерея"}, {"phone.app.contacts", "Контакты"},
                 {"phone.app.notes", "Заметки"}, {"phone.app.schedule", "Расписание"}, {"phone.app.games", "Игры"},
                 {"phone.gallery", "Галерея"}, {"phone.contacts", "Контакты"},
