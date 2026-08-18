@@ -1,0 +1,722 @@
+# Start
+
+@set playerName=""
+@set playerSex=""
+@set maxAffinity=0
+
+@bg Apartment_Bedroom_Morning time:1.5
+@bgm Morning fade:2.0
+
+@phoneOff
+...
+
+Phone: 06:00
+
+...
+
+A short vibration comes from the fitness tracker.
+
+...
+
+The protagonist opens {him} eyes.
+
+Protagonist: Already?
+
+...
+
+Protagonist: Alright.
+
+The protagonist calmly turns off the alarm.
+
+Without any unnecessary movements, {he} gets out of bed.
+
+@bg Home_Gym time:1.2
+
+A few minutes later.
+
+The screen rapidly cuts between scenes.
+
+Dumbbells.
+
+Pull-ups.
+
+A treadmill.
+
+Stretching.
+
+Nothing unusual.
+
+Just another morning.
+
+@sfx Bracelet
+
+Bracelet: Workout complete.
+
+Bracelet: All indicators are within the normal range.
+
+Protagonist: Great.
+
+Protagonist: Now I can be lazy with a clear conscience.
+
+@bg Kitchen_Morning time:1.2
+
+The coffee machine quietly finishes brewing.
+
+The protagonist pours some coffee.
+
+A diploma lies on the table.
+
+Red.
+
+Several congratulatory envelopes lie beside it.
+
+The protagonist puts the mug on top of the diploma like it's a coaster.
+
+Protagonist: Nice.
+
+...
+
+Protagonist: Five years...
+
+Protagonist: And all for a coaster like this.
+
+The protagonist smiles.
+
+Protagonist: At least it's useful for something.
+
+The computer in the next room makes a short sound.
+
+@sfx Mail
+
+Protagonist: Hmm?
+
+@bg Home_PC time:1.4
+
+The monitor is already on.
+
+There is one new email on the screen.
+
+Sender [br]System: Government Program "Elysium"
+
+...
+
+The protagonist calmly takes a sip of coffee.
+
+Opens the email.
+
+...
+
+Reads.
+
+...
+
+Scrolls a little further.
+
+...
+
+Finishes reading.
+
+...
+
+Protagonist: Four days early.
+
+...
+
+Email: Congratulations!
+
+Email: Based on the results of the comprehensive graduate evaluation, you have been invited to participate in the government program "Elysium."
+
+Email: Please confirm your personal information to continue.
+
+@input playerName "Enter your name"
+
+@if playerName=="" goto:DefaultName else:ContinueName
+
+# DefaultName
+
+@set playerName="Alex"
+@goto ContinueName
+
+# ContinueName
+
+System: Name confirmed.
+
+@choice "Male" goto:Male | "Female" goto:Female
+
+# Male
+
+@set playerSex="male", he="he", him="him", past="", novy="newcomer"
+@goto ContinueData
+
+# Female
+
+@set playerSex="female", he="she", him="her", past="a", novy="newcomer"
+@goto ContinueData
+
+# ContinueData
+
+@phoneOn
+
+@msg chat:family notify:0 from:"Mom" "Where are you? Did school end already?"
+@msg chat:exes notify:0 from:"Rin" "I missed you, {playerName}"
+@photo chat:exes notify:0 rin/selfie1 sender:Rin
+
+System: Data successfully updated.
+
+{playerName}: Alright...
+
+{playerName}: Let's see.
+
+The contract opens on the screen.
+
+The scroll bar becomes tiny.
+
+...
+
+{playerName} stares at it silently for a few seconds.
+
+...
+
+Takes another sip of coffee.
+
+...
+
+{playerName}: Eighty-seven pages...
+
+...
+
+{playerName}: Not bad.
+
+{he} starts reading.
+
+...
+
+The pages slowly scroll by.
+
+...
+
+Time passes.
+
+...
+
+Finally, the document comes to an end.
+
+{playerName}: Nothing unexpected.
+
+{playerName}: Almost boring, actually.
+
+A large button appears on the screen.
+
+System: Confirm participation.
+
+{playerName} presses it without hesitation.
+
+System: Contract successfully signed.
+
+System: Departure date: in three days.
+
+...
+
+{playerName} looks at the screen for a few more seconds.
+
+...
+
+The phone buzzes.
+
+A message from Max.
+
+@online chat:max contact:"Max 🐶" goto:MaxTalk
+@online chat:exes contact:"Rin 🦊" goto:RinTalk notify:0
+
+@waitchat max exes remind:"I still haven't talked to everyone I wanted to."
+
+@goto AfterChats
+
+
+# MaxTalk
+
+Max: Did you get it already? 😁
+
+Max: Or are you refreshing your email every five seconds again?
+
+{playerName}: Got it.
+
+{playerName}: Told you I would.
+
+@typing time:1.4
+
+Max: WHAAAAAAAAAT???
+
+Max: NO WAY!!!!
+
+Max: I KNEW IT!!!
+
+Max: AAAAAAAAAAAAAAA
+
+Max: CONGRATULATIONS!!!!
+
+{playerName}: Thanks.
+
+Max: NO
+
+Max: NOPE
+
+Max: NOT "THANKS"
+
+Max: THAT IS NOT THE RIGHT RESPONSE
+
+Max: DO YOU UNDERSTAND WHAT JUST HAPPENED???
+
+{playerName}: I got an email.
+
+Max: 😂😂😂
+
+Max: "I got an email," he says.
+
+Max: You were just officially recognized as one of the best alphas in the country.
+
+Max: And you're just like
+
+Max: "Got an email."
+
+{playerName}: Technically, that's exactly what happened.
+
+Max: Sometimes I don't understand how you even function.
+
+{playerName}: Calmly.
+
+Max: Exactly.
+
+Max: TOO calmly.
+
+Max: Remember the graduation exam?
+
+Max: I thought I was going to have a heart attack.
+
+Max: You were sleeping.
+
+{playerName}: I prepared in advance.
+
+Max: SEE?!
+
+Max: EVEN YOUR LAZINESS IS PROPERLY ORGANIZED.
+
+{playerName}: Thanks.
+
+Max: THAT WAS NOT A COMPLIMENT.
+
+{playerName}: Too late.
+
+{playerName}: I've already decided it was.
+
+Max: ...
+
+Max: You know...
+
+Max: Sometimes I really want to hit you.
+
+{playerName}: Get in line.
+
+Max: 😂
+
+Max: ...
+
+Max: Listen.
+
+Max: Seriously.
+
+Max: I'm really happy for you.
+
+{playerName}: I know.
+
+Max: No.
+
+Max: You don't understand how much.
+
+Max: We knew back in school that you'd get picked.
+
+Max: Then university.
+
+Max: Internships.
+
+Max: All those tests.
+
+Max: Every time, I thought...
+
+Max: This is it.
+
+Max: This time for sure.
+
+Max: And every time they told you:
+
+Max: "Please wait until the next stage has been completed."
+
+{playerName}: Bureaucracy values consistency.
+
+Max: 😂
+
+Max: You sound like a professor even now.
+
+{playerName}: I hope not.
+
+Max: Alright.
+
+Max: The important question.
+
+Max: When are you leaving?
+
+{playerName}: In three days.
+
+Max: ...
+
+Max: WHAT?!
+
+Max: THAT SOON?!
+
+{playerName}: Looks like it.
+
+Max: Do they have absolutely no mercy for people?
+
+Max: I'd need a week just to pack.
+
+{playerName}: I don't have that many things.
+
+Max: Because you're a maniac.
+
+Max: Your apartment looks like a museum exhibit.
+
+{playerName}: Makes things easier to find.
+
+Max: I've seen it once.
+
+Max: You even organize your socks.
+
+{playerName}: By purpose.
+
+Max: ...
+
+Max: WHAT DOES THAT EVEN MEAN
+
+Max: BY PURPOSE?
+
+{playerName}: Sports socks.
+
+{playerName}: Home socks.
+
+{playerName}: Everyday socks.
+
+{playerName}: Warm socks.
+
+Max: 😂😂😂😂
+
+Max: You're impossible.
+
+...
+
+Max doesn't write anything for a while.
+
+...
+
+A notification appears.
+
+Max: Can I be honest?
+
+{playerName}: Give it a try.
+
+Max: I'm a little jealous.
+
+...
+
+{playerName}: Of the money?
+
+Max: What does money have to do with it?
+
+Max: Although...
+
+Max: No.
+
+Max: I'm jealous of the money too.
+
+Max: 😂
+
+Max: But that's not what I mean.
+
+Max: It's just...
+
+Max: You've always had a choice.
+
+Max: You could get into the program.
+
+Max: You could refuse.
+
+Max: You could accept.
+
+Max: But me...
+
+Max: I was never even on the list.
+
+...
+
+{playerName}: You knew why.
+
+Max: Of course.
+
+Max: Since birth.
+
+Max: "Beta."
+
+Max: No options.
+
+Max: It doesn't upset me.
+
+Max: I'm used to it.
+
+...
+
+Max: But sometimes you still wonder...
+
+Max: "What if?"
+
+...
+
+Max: Stupid, right?
+
+...
+
+{playerName}: No.
+
+...
+
+{playerName}: I guess...
+
+{playerName}: When you don't have a choice—
+
+{playerName}: It always feels bad.
+
+Max: ...
+
+Max: Thanks.
+
+Max: I don't know why.
+
+Max: But your words always make things easier.
+
+{playerName}: That's because I don't talk much.
+
+Max: 😂
+
+Max: THERE.
+
+Max: THAT'S THE HUMOR.
+
+Max: THAT'S WHAT I WAS WAITING FOR.
+
+{playerName}: I try.
+
+Max: Don't lie.
+
+Max: You never try.
+
+Max: Everything just comes naturally to you.
+
+{playerName}: That's not true.
+
+Max: Yeah.
+
+Max: Tell that to the guy
+
+Max: who watched you
+
+Max: win the university olympiad
+
+Max: after spending three evenings preparing.
+
+{playerName}: Four.
+
+Max: OH WOW.
+
+Max: MY APOLOGIES.
+
+Max: FOUR WHOLE EVENINGS.
+
+...
+
+Max: Alright.
+
+Max: Now for something important.
+
+Max: We're getting together tomorrow evening.
+
+Max: Everyone.
+
+{playerName}: Why?
+
+Max: 🤦
+
+Max: Because our friend is leaving.
+
+Max: For half a year.
+
+Max: To the most isolated city in the country.
+
+Max: And nobody knows
+
+Max: when we'll see each other again.
+
+{playerName}: Sounds convincing.
+
+Max: Because it's true.
+
+{playerName}: Alright.
+
+{playerName}: I'll be there.
+
+Max: Just don't pull one of your stunts.
+
+{playerName}: Which ones?
+
+Max: When everyone is sitting at the bar,
+
+Max: you go home at ten
+
+Max: because
+
+Max: "sleep schedule is more important."
+
+{playerName}: It is more important.
+
+Max: I HATE IT
+
+Max: WHEN YOU'RE RIGHT.
+
+{playerName}: Get used to it.
+
+Max: Never.
+
+Max: 😤
+
+...
+
+Max sends a sticker of a happy dog.
+
+...
+
+{playerName} smiles.
+
+@chatend
+
+
+# RinTalk
+
+Rin: Did you read it?!
+
+{playerName}: Just opened the chat.
+
+Rin: I texted you as soon as I found out.
+
+Rin: I didn't want you to hear about it later.
+
+Rin: You already signed the contract, didn't you?
+
+{playerName}: Yeah.
+
+Rin: Three days?
+
+{playerName}: Yeah.
+
+Rin: ...
+
+Rin: I hate this system.
+
+{playerName}: Why?
+
+Rin: Because they don't even give you time to process what's happening.
+
+@photo chat:exes rin/selfie2 sender:Rin
+
+Rin: Here.
+
+Rin: Now at least you'll remember what I look like before you leave.
+
+{playerName}: You're being dramatic.
+
+Rin: Of course I am.
+
+Rin: Someone has to be.
+
+{playerName}: You know I can't help you with that anymore.
+
+Rin: I know.
+
+Rin: I just wanted to talk.
+
+...
+
+Rin: Are you free tomorrow evening?
+
+{playerName}: I think so.
+
+Rin: Then I'll see you.
+
+Rin: Don't disappear before then.
+
+@chatend
+
+
+# AfterChats
+
+@offline
+
+...
+
+The room becomes quiet.
+
+...
+
+{he} opens the email again.
+
+For a few seconds, {he} looks at the national emblem.
+
+...
+
+Then {he} turns toward the window.
+
+@bg Apartment_Window_Morning time:1.5
+
+Beyond the glass, the city goes on as usual.
+
+Buses.
+
+Pedestrians.
+
+Someone is rushing to work.
+
+Someone is walking their dog.
+
+For them, today is no different from yesterday.
+
+...
+
+{playerName} takes the last sip of the now cold coffee.
+
+{playerName}: Looks like...
+
+...
+
+{playerName}: My peaceful life is over.
+
+@stopBgm fade:2.5
+
+@fadeOut time:2.0
+
+...
+
+System:
+CHAPTER 0
+
+...
+
+System:
+The Last Peaceful Morning
+
+@goto 01_journey_start_RUS.Start

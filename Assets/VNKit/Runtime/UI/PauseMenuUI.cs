@@ -28,6 +28,8 @@ namespace VNKit
             win.sizeDelta = new Vector2(380f, 386f);
             closeButton.onClick.AddListener(Hide);
 
+            UIFactory.LocalizeWindowTitle(win, "menu.title"); // 2.12.3: live language switch
+
             var col = UIFactory.Rect("Buttons", win);
             col.anchorMin = new Vector2(0f, 0f);
             col.anchorMax = new Vector2(1f, 1f);
@@ -41,21 +43,21 @@ namespace VNKit
             vlg.childForceExpandHeight = false;
             vlg.spacing = 10f;
 
-            AddButton(col, VNLoc.T("menu.resume"), Hide);
+            AddButton(col, "menu.resume", Hide);
             // The pause menu itself is a blocking modal, so the engine's Open*
             // gates would refuse to open a panel on top of it — close the menu
             // first, then open the target panel.
-            AddButton(col, VNLoc.T("menu.save"), delegate { Hide(); engine.OpenSavePanel(); });
-            AddButton(col, VNLoc.T("menu.load"), delegate { Hide(); engine.OpenLoadPanel(); });
-            AddButton(col, VNLoc.T("qm.settings"), delegate { Hide(); engine.OpenSettings(); });
-            AddButton(col, VNLoc.T("qm.title"), delegate { Hide(); engine.ReturnToTitle(); });
+            AddButton(col, "menu.save", delegate { Hide(); engine.OpenSavePanel(); });
+            AddButton(col, "menu.load", delegate { Hide(); engine.OpenLoadPanel(); });
+            AddButton(col, "qm.settings", delegate { Hide(); engine.OpenSettings(); });
+            AddButton(col, "qm.title", delegate { Hide(); engine.ReturnToTitle(); });
 
             root.SetActive(false);
         }
 
-        void AddButton(RectTransform parent, string label, UnityEngine.Events.UnityAction action)
+        void AddButton(RectTransform parent, string locKey, UnityEngine.Events.UnityAction action)
         {
-            var b = UIFactory.Button(parent, "Btn." + label, label, 24, action);
+            var b = UIFactory.LocButton(parent, "Btn." + locKey, locKey, 24, action);
             UIFactory.Layout(b.gameObject, 0f, 48f);
         }
 
@@ -63,6 +65,10 @@ namespace VNKit
 
         public void Show()
         {
+            // 2.12.2: re-Show while open must not re-capture dialogueWasVisible
+            // (the panel is already hidden by us — the flag would latch false
+            // and the panel would never come back on Hide).
+            if (IsOpen) return;
             // The menu covers the scene like a real pause screen: the dialogue
             // panel must not peek out from underneath it (no Ren'Py-style stack).
             dialogueWasVisible = engine.Dialogue != null && engine.Dialogue.IsOpen;

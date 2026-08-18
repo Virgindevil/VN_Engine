@@ -62,6 +62,14 @@ namespace VNKit
             root.SetActive(false);
         }
 
+        /// <summary>2.12.3: live language switch — re-translate the window title
+        /// and rebuild the slots ("Slot" / "empty" labels) while the panel is open.</summary>
+        public void RefreshLocalization()
+        {
+            titleText.text = mode == Mode.Save ? VNLoc.T("saveload.save") : VNLoc.T("saveload.load");
+            if (IsOpen) Refresh();
+        }
+
         public void Refresh()
         {
             for (int i = grid.childCount - 1; i >= 0; i--)

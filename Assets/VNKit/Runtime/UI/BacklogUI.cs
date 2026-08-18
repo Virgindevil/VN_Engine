@@ -23,6 +23,7 @@ namespace VNKit
             var win = UIFactory.Window(root.transform, VNLoc.T("backlog.title"),
                 new Vector2(0.15f, 0.10f), new Vector2(0.85f, 0.90f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
+            UIFactory.LocalizeWindowTitle(win, "backlog.title"); // 2.12.3
 
             // UIFactory.ScrollView clips via RectMask2D (no alpha-dependent Mask),
             // so entries are always visible.

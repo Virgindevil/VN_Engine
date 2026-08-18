@@ -166,10 +166,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d075103fae8a46c69fce87e6efd9e022, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startScript: {fileID: 9027929339269108002, guid: 70b538a40ffb9ef458b1dc345c9291c4, type: 3}
+  startScript: {fileID: 0}
   additionalScripts:
-  - {fileID: 4900000, guid: 662af4f1d1a344f280d0cc7adf0730bd, type: 3}
-  - {fileID: 4900000, guid: 8d5f71ee88594f4fbb35217571265029, type: 3}
+  - {fileID: 9027929339269108002, guid: 57f8cef7813d9ee468d01e208d4700ea, type: 3}
+  - {fileID: 9027929339269108002, guid: 67fcff816cb28f04cb73a26304753202, type: 3}
   resourcesRoot: VN
   showTitleScreen: 1
   gameTitle: VNKit Demo

@@ -33,21 +33,22 @@ namespace VNKit
             hlg.childForceExpandHeight = true;
             hlg.spacing = 8f;
 
-            AddButton("backlog", VNLoc.T("qm.backlog"), engine.OpenBacklog, btnW);
-            AddButton("save", VNLoc.T("qm.save"), engine.OpenSavePanel, btnW);
-            AddButton("load", VNLoc.T("qm.load"), engine.OpenLoadPanel, btnW);
-            autoBtn = AddButton("auto", VNLoc.T("qm.auto"), engine.ToggleAuto, btnW);
-            skipBtn = AddButton("skip", VNLoc.T("qm.skip"), engine.ToggleSkip, btnW);
-            AddButton("cg", VNLoc.T("qm.gallery"), engine.OpenGallery, btnW);
-            AddButton("settings", VNLoc.T("qm.settings"), engine.OpenSettings, btnW);
-            AddButton("title", VNLoc.T("qm.title"), engine.ReturnToTitle, btnW);
+            // 2.12.3: key-bound labels re-translate on live language change.
+            AddButton("backlog", "qm.backlog", engine.OpenBacklog, btnW);
+            AddButton("save", "qm.save", engine.OpenSavePanel, btnW);
+            AddButton("load", "qm.load", engine.OpenLoadPanel, btnW);
+            autoBtn = AddButton("auto", "qm.auto", engine.ToggleAuto, btnW);
+            skipBtn = AddButton("skip", "qm.skip", engine.ToggleSkip, btnW);
+            AddButton("cg", "qm.gallery", engine.OpenGallery, btnW);
+            AddButton("settings", "qm.settings", engine.OpenSettings, btnW);
+            AddButton("title", "qm.title", engine.ReturnToTitle, btnW);
 
             root.SetActive(false);
         }
 
-        Button AddButton(string name, string label, UnityAction action, float width)
+        Button AddButton(string name, string locKey, UnityAction action, float width)
         {
-            var b = UIFactory.Button(root.transform, name, label, 20, action);
+            var b = UIFactory.LocButton(root.transform, name, locKey, 20, action);
             UIFactory.Layout(b.gameObject, width, 0f);
             return b;
         }

@@ -14,6 +14,20 @@ namespace VNKit
     {
         public static string Language = "en";
 
+        /// <summary>2.12.3: fired after Language changes via SetLanguage — bound UI
+        /// labels (VNLocLabel) re-translate themselves immediately, so switching the
+        /// language in settings no longer requires a game restart.</summary>
+        public static event System.Action LanguageChanged;
+
+        /// <summary>Switch the active language and notify bound UI. Direct field
+        /// assignment (VNLoc.Language = ...) still works but fires no notification.</summary>
+        public static void SetLanguage(string lang)
+        {
+            if (string.IsNullOrEmpty(lang) || lang == Language) return;
+            Language = lang;
+            if (LanguageChanged != null) LanguageChanged();
+        }
+
         static readonly Dictionary<string, Dictionary<string, string>> tables =
             new Dictionary<string, Dictionary<string, string>>();
 

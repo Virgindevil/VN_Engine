@@ -503,6 +503,45 @@ namespace VNKit
             return btn;
         }
 
+        // ============================== 2.12.3: live-localized variants ==============================
+        // These build the same widgets as Text/Button/Toggle/Window but bind the
+        // label to a VNLoc key via VNLocLabel, so a language change in settings
+        // re-translates them immediately (no restart).
+
+        public static TextMeshProUGUI LocText(Transform parent, string name, string locKey, int fontSize, TextAnchor anchor, Color color)
+        {
+            var t = Text(parent, name, VNLoc.T(locKey), fontSize, anchor, color);
+            t.gameObject.AddComponent<VNLocLabel>().key = locKey;
+            return t;
+        }
+
+        public static Button LocButton(Transform parent, string name, string locKey, int fontSize, UnityAction onClick)
+        {
+            var b = Button(parent, name, VNLoc.T(locKey), fontSize, onClick);
+            b.GetComponentInChildren<TextMeshProUGUI>().gameObject.AddComponent<VNLocLabel>().key = locKey;
+            return b;
+        }
+
+        public static Toggle LocToggle(Transform parent, string name, string locKey, bool value, UnityAction<bool> onChange)
+        {
+            var t = Toggle(parent, name, VNLoc.T(locKey), value, onChange);
+            t.GetComponentInChildren<TextMeshProUGUI>().gameObject.AddComponent<VNLocLabel>().key = locKey;
+            return t;
+        }
+
+        /// <summary>Re-bind the header title of a Window() to a VNLoc key.</summary>
+        public static void LocalizeWindowTitle(RectTransform win, string locKey)
+        {
+            var titleT = win.Find("Header/Title");
+            if (titleT == null) return;
+            var tmp = titleT.GetComponent<TextMeshProUGUI>();
+            if (tmp == null) return;
+            tmp.text = VNLoc.T(locKey);
+            var loc = titleT.GetComponent<VNLocLabel>();
+            if (loc == null) loc = titleT.gameObject.AddComponent<VNLocLabel>();
+            loc.key = locKey;
+        }
+
         public static Slider Slider(Transform parent, string name, float min, float max, float value, UnityAction<float> onChange)
         {
             var rt = Rect(name, parent);

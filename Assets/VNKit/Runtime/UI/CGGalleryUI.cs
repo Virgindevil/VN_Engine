@@ -30,6 +30,7 @@ namespace VNKit
             var win = UIFactory.Window(root.transform, VNLoc.T("gallery.title"),
                 new Vector2(0.08f, 0.07f), new Vector2(0.92f, 0.93f), out closeBtn);
             closeBtn.onClick.AddListener(Hide);
+            UIFactory.LocalizeWindowTitle(win, "gallery.title"); // 2.12.3
 
             grid = UIFactory.Rect("Grid", win);
             grid.anchorMin = new Vector2(0.03f, 0.03f);
@@ -63,7 +64,7 @@ namespace VNKit
             vfit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             vfit.aspectRatio = 16f / 9f;
 
-            var hint = UIFactory.Text(viewer.transform, "Hint", VNLoc.T("gallery.hint"), 20,
+            var hint = UIFactory.LocText(viewer.transform, "Hint", "gallery.hint", 20,
                 TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.6f));
             var hrt = (RectTransform)hint.transform;
             hrt.anchorMin = new Vector2(0.4f, 0.015f);
@@ -87,6 +88,13 @@ namespace VNKit
         {
             viewer.SetActive(false);
             root.SetActive(false);
+        }
+
+        /// <summary>2.12.3: live language switch — rebuild the grid so "locked"
+        /// captions re-translate while the gallery is open.</summary>
+        public void RefreshLocalization()
+        {
+            if (IsOpen) Refresh();
         }
 
         void Refresh()

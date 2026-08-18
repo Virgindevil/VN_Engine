@@ -347,6 +347,11 @@ namespace VNKit
                 else if (BacklogPanel.IsOpen) BacklogPanel.Hide();
                 else if (SaveLoadPanel.IsOpen) SaveLoadPanel.Hide();
                 else if (PhotoViewer != null && PhotoViewer.IsOpen) PhotoViewer.Hide();
+                // The pause menu is topmost — Esc closes it before anything
+                // phone-related (2.12.2: with a locked live dialogue the phone
+                // stays open under the pause menu; checking the phone first would
+                // re-Show the menu on every Esc and clobber its restore state).
+                else if (PauseMenu != null && PauseMenu.IsOpen) PauseMenu.Hide();
                 // 2.12.2: a locked live dialogue keeps the phone on screen —
                 // Esc then opens the pause menu instead (escape hatch via title).
                 else if (Phone != null && Phone.IsMenuOpen)
@@ -354,7 +359,6 @@ namespace VNKit
                     if (!Phone.DialogueLock) Phone.CloseMenu();
                     else if (PauseMenu != null) PauseMenu.Show();
                 }
-                else if (PauseMenu != null && PauseMenu.IsOpen) PauseMenu.Hide();
                 else if (!Title.IsOpen && Player.State != PlayerState.Idle && Player.State != PlayerState.Ended)
                     ToggleInGameMenu();
                 return;
@@ -679,17 +683,24 @@ namespace VNKit
         }
 
         /// <summary>
-        /// Returns a script by name. When a localized variant "Name.&lt;language&gt;" is registered
-        /// (e.g. "Demo.ru" next to "Demo"), the variant matching Settings.language wins.
+        /// Returns a script by name. A localized variant matching Settings.language wins:
+        /// "Name.&lt;language&gt;" (e.g. "Demo.ru" from Demo.ru.vns) is tried first, then the
+        /// "Name_&lt;LANG&gt;" convention (e.g. "Demo_RU"), then the base script itself.
+        /// The variant must be registered (listed in the engine's script list) like any
+        /// other script.
         /// </summary>
         public VNScript GetScript(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
 
             string resolved = name;
-            if (!string.IsNullOrEmpty(Settings.language)
-                && scriptAssets.ContainsKey(name + "." + Settings.language))
-                resolved = name + "." + Settings.language;
+            if (!string.IsNullOrEmpty(Settings.language))
+            {
+                if (scriptAssets.ContainsKey(name + "." + Settings.language))
+                    resolved = name + "." + Settings.language;
+                else if (scriptAssets.ContainsKey(name + "_" + Settings.language.ToUpperInvariant()))
+                    resolved = name + "_" + Settings.language.ToUpperInvariant();
+            }
 
             VNScript s;
             if (scriptCache.TryGetValue(resolved, out s)) return s;
@@ -1376,11 +1387,25 @@ namespace VNKit
 
         public void ApplySettings()
         {
-            VNLoc.Language = Settings.language;
+            // 2.12.3: SetLanguage fires VNLoc.LanguageChanged (live UI retranslation);
+            // panels holding rebuildable content are refreshed via RelocalizeUI.
+            bool langChanged = VNLoc.Language != Settings.language;
+            VNLoc.SetLanguage(Settings.language);
             scriptCache.Clear(); // localized script variants resolve on next access
             if (Audio != null) Audio.ApplyVolumes();
             ApplyVideoSettings();
             PlayerPrefs.SetString(SettingsKey, JsonUtility.ToJson(Settings));
+            if (langChanged) RelocalizeUI();
+        }
+
+        /// <summary>2.12.3: refresh panels whose localized content is built
+        /// dynamically (slot lists, CG grid, phone screens). Static labels bound
+        /// through VNLocLabel already updated themselves via VNLoc.LanguageChanged.</summary>
+        void RelocalizeUI()
+        {
+            if (SaveLoadPanel != null) SaveLoadPanel.RefreshLocalization();
+            if (GalleryPanel != null) GalleryPanel.RefreshLocalization();
+            if (Phone != null) Phone.RefreshLocalization();
         }
 
         void ApplyVideoSettings()

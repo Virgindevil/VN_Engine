@@ -819,7 +819,11 @@ namespace VNKit
             var img = UIFactory.AddImage(bubble.gameObject, msg.incoming ? IncomingColor : OutgoingColor());
             img.sprite = UIFactory.UISprite;
             img.type = Image.Type.Sliced;
-            img.raycastTarget = false;
+            // 2.12.3: the bubble must be raycastable — the Button on the row has no
+            // graphic of its own, so clicks only reach it by bubbling up from a hit
+            // graphic. With raycastTarget=false everywhere the photo could never be
+            // tapped (the viewer never opened in chat or in the photos app).
+            img.raycastTarget = true;
 
             var picRT = UIFactory.Rect("Pic", bubble);
             picRT.anchorMin = Vector2.zero;
@@ -827,7 +831,7 @@ namespace VNKit
             picRT.offsetMin = new Vector2(6f, 6f);
             picRT.offsetMax = new Vector2(-6f, -6f);
             var raw = picRT.gameObject.AddComponent<RawImage>();
-            raw.raycastTarget = false;
+            raw.raycastTarget = true; // 2.12.3: photo itself is the tap target
             raw.color = new Color(1f, 1f, 1f, 0.25f); // dim until loaded
             var fit = picRT.gameObject.AddComponent<AspectRatioFitter>();
             fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
@@ -1119,11 +1123,22 @@ namespace VNKit
         {
             Chat c;
             if (!chats.TryGetValue(chatId, out c)) return;
-            titleText.text = c.contact;
             readChatId = chatId;
+            RebuildReadChat(c);
+            // 2.11: entering the chat may resume a held line (the script waits
+            // until the player is inside) or jump to a pending live dialogue.
+            if (engine.Player != null) engine.Player.OnChatEntered(chatId);
+        }
+
+        /// <summary>Rebuilds the chat reading screen (header, bubbles, action bar)
+        /// WITHOUT firing OnChatEntered — safe for localization refreshes.</summary>
+        void RebuildReadChat(Chat c)
+        {
+            titleText.text = c.contact;
+            readChatId = c.id;
             ShowScreenKeepTitle(Screen.ReadChat);
             // "Online" marker while the script is writing into THIS chat.
-            bool live = chatMode && chatId == currentChatId;
+            bool live = chatMode && c.id == currentChatId;
             statusText.text = VNLoc.T("phone.online");
             statusText.gameObject.SetActive(live);
             ClearChildren(readContent);
@@ -1140,9 +1155,31 @@ namespace VNKit
                 if (!string.IsNullOrEmpty(c.messages[i].id)) MarkMessageVar(c.messages[i].id, "read");
             ScrollReadToBottom();
             RefreshActionBar(c); // 2.12: contextual action buttons (@chatActions)
-            // 2.11: entering the chat may resume a held line (the script waits
-            // until the player is inside) or jump to a pending live dialogue.
-            if (engine.Player != null) engine.Player.OnChatEntered(chatId);
+        }
+
+        /// <summary>2.12.3: live language switch — re-render the visible phone
+        /// screen so every VNLoc.T label re-translates without a restart.
+        /// Message text itself comes from the script and is not localized here.</summary>
+        public void RefreshLocalization()
+        {
+            if (!root.activeSelf) return; // hidden — screens rebuild on next open anyway
+            if (currentScreen == Screen.ReadChat && readChatId != null)
+            {
+                Chat c;
+                if (chats.TryGetValue(readChatId, out c)) RebuildReadChat(c);
+                return;
+            }
+            if (currentScreen == Screen.Story)
+            {
+                // Compact live-chat overlay: bubbles are script text; only the
+                // status line ("online"/"typing") is a localized UI string.
+                if (statusText.gameObject.activeSelf)
+                    statusText.text = typingBubble != null
+                        ? VNLoc.T("phone.typing") + "…"
+                        : VNLoc.T("phone.online");
+                return;
+            }
+            ShowScreen(currentScreen);
         }
 
         void CreateDivider(RectTransform parent)

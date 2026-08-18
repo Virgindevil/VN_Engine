@@ -77,16 +77,17 @@ namespace VNKit
             float btnH = theme != null ? theme.titleButtonHeight : 66f;
             int btnFont = theme != null ? theme.titleButtonFontSize : 28;
 
-            AddMenuButton(column, VNLoc.T("title.newgame"), btnH, btnFont, engine.StartNewGame);
-            AddMenuButton(column, VNLoc.T("title.load"), btnH, btnFont, engine.OpenLoadPanel);
-            AddMenuButton(column, VNLoc.T("title.gallery"), btnH, btnFont, engine.OpenGallery);
-            AddMenuButton(column, VNLoc.T("title.settings"), btnH, btnFont, engine.OpenSettings);
-            AddMenuButton(column, VNLoc.T("title.quit"), btnH, btnFont, engine.QuitGame);
+            // 2.12.3: key-bound labels re-translate on live language change.
+            AddMenuButton(column, "title.newgame", btnH, btnFont, engine.StartNewGame);
+            AddMenuButton(column, "title.load", btnH, btnFont, engine.OpenLoadPanel);
+            AddMenuButton(column, "title.gallery", btnH, btnFont, engine.OpenGallery);
+            AddMenuButton(column, "title.settings", btnH, btnFont, engine.OpenSettings);
+            AddMenuButton(column, "title.quit", btnH, btnFont, engine.QuitGame);
 
             // Footer
             if (theme == null || theme.showTitleFooter)
             {
-                var footer = UIFactory.Text(root.transform, "Footer", VNLoc.T("title.footer"), 18,
+                var footer = UIFactory.LocText(root.transform, "Footer", "title.footer", 18,
                     TextAnchor.MiddleCenter, new Color(1f, 1f, 1f, 0.35f));
                 var frt = (RectTransform)footer.transform;
                 frt.anchorMin = new Vector2(0.4f, 0.02f);
@@ -98,10 +99,10 @@ namespace VNKit
             root.SetActive(false);
         }
 
-        void AddMenuButton(RectTransform column, string label, float height, int fontSize,
+        void AddMenuButton(RectTransform column, string locKey, float height, int fontSize,
             UnityEngine.Events.UnityAction action)
         {
-            var btn = UIFactory.Button(column, label, label, fontSize, action);
+            var btn = UIFactory.LocButton(column, locKey, locKey, fontSize, action);
             UIFactory.Layout(btn.gameObject, 0f, height);
         }
 
